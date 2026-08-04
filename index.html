@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Club Chotacabras · Material</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+
+<!-- Reportes -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+:root{
+  --pine-900:#16302a;
+  --pine-700:#254a3f;
+  --pine-600:#2f5c4d;
+  --moss-500:#6f8f74;
+  --moss-300:#a9c2ac;
+  --stone-50:#f4f2ea;
+  --stone-100:#eae6d9;
+  --stone-200:#d9d3c2;
+  --ink-900:#1c211d;
+  --ink-600:#4b5449;
+  --lake-600:#3e6e75;
+  --lake-700:#2f555b;
+  --amber-500:#c1852e;
+  --amber-100:#f3e2c3;
+  --rust-500:#a8492f;
+  --rust-100:#f1dcd4;
+  --ok-500:#4c7a4f;
+  --ok-100:#dbe8db;
+  --radius:10px;
+  --shadow:0 1px 2px rgba(22,48,42,.06), 0 4px 14px rgba(22,48,42,.07);
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--stone-50);
+  color:var(--ink-900);
+  font-family:'Work Sans',sans-serif;
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,.display{font-family:'Fraunces',serif;letter-spacing:-0.01em;}
+.mono{font-family:'IBM Plex Mono',monospace;}
+.hidden{display:none !important;}
+button{font-family:inherit;cursor:pointer;}
+input,select,textarea{font-family:inherit;}
+a{color:var(--lake-700);}
+
+/* ---------- Auth screens ---------- */
+.auth-wrap{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:
+    radial-gradient(1200px 600px at 15% -10%, rgba(111,143,116,.25), transparent 60%),
+    radial-gradient(900px 500px at 110% 10%, rgba(62,110,117,.18), transparent 55%),
+    var(--pine-900);
+  padding:24px;
+}
+.auth-card{
+  width:100%;max-width:420px;background:var(--stone-50);
+  border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.35);
+  padding:36px 32px;
+}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:22px;}
+.brand-mark{
+  width:38px;height:38px;border-radius:9px;background:var(--pine-700);
+  display:flex;align-items:center;justify-content:center;color:var(--stone-50);
+  font-family:'Fraunces',serif;font-weight:700;font-size:18px;flex:none;
+}
+.brand-name{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-600);}
+.auth-card h1{font-size:26px;margin:0 0 4px;color:var(--pine-900);}
+.auth-sub{color:var(--ink-600);font-size:14px;margin-bottom:24px;}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:12.5px;font-weight:600;color:var(--ink-600);margin-bottom:5px;text-transform:uppercase;letter-spacing:.03em;}
+.field input,.field select,.field textarea{
+  width:100%;padding:11px 12px;border:1.5px solid var(--stone-200);border-radius:8px;
+  background:#fff;font-size:14.5px;color:var(--ink-900);outline:none;
+  transition:border-color .15s;
+}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--lake-600);}
+.btn{
+  border:none;border-radius:8px;padding:11px 18px;font-size:14.5px;font-weight:600;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  transition:filter .15s, transform .05s;
+}
+.btn:active{transform:translateY(1px);}
+.btn-primary{background:var(--pine-700);color:#fff;width:100%;}
+.btn-primary:hover{filter:brightness(1.08);}
+.btn-ghost{background:transparent;color:var(--pine-700);border:1.5px solid var(--stone-200);}
+.btn-ghost:hover{background:var(--stone-100);}
+.btn-small{padding:7px 12px;font-size:13px;}
+.btn-danger{background:var(--rust-500);color:#fff;}
+.btn-outline-danger{background:transparent;border:1.5px solid var(--rust-500);color:var(--rust-500);}
+.auth-switch{margin-top:18px;font-size:13.5px;text-align:center;color:var(--ink-600);}
+.auth-switch a{cursor:pointer;font-weight:600;}
+.error-msg{background:var(--rust-100);color:var(--rust-500);border-radius:8px;padding:10px 12px;font-size:13.5px;margin-bottom:14px;}
+.info-msg{background:var(--amber-100);color:#8a5f1f;border-radius:8px;padding:10px 12px;font-size:13.5px;margin-bottom:14px;}
+
+.pending-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--stone-50);padding:24px;}
+.pending-card{max-width:440px;text-align:center;}
+.pending-card .icon{font-size:44px;margin-bottom:10px;}
+.pending-card h1{font-size:24px;color:var(--pine-900);margin-bottom:8px;}
+.pending-card p{color:var(--ink-600);font-size:14.5px;line-height:1.5;}
+
+/* ---------- App shell ---------- */
+.app-shell{min-height:100vh;}
+.topbar{
+  background:var(--pine-900);color:var(--stone-50);
+  padding:14px 22px;display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:40;
+}
+.topbar .brand{margin:0;}
+.topbar .brand-name{color:var(--moss-300);}
+.topbar-right{display:flex;align-items:center;gap:14px;font-size:13.5px;}
+.role-badge{
+  background:rgba(255,255,255,.12);padding:4px 10px;border-radius:20px;font-size:12px;
+  text-transform:uppercase;letter-spacing:.04em;font-weight:600;
+}
+.tabbar{
+  background:var(--pine-700);display:flex;gap:2px;padding:0 16px;overflow-x:auto;
+  position:sticky;top:57px;z-index:39;
+}
+.tab-btn{
+  background:transparent;border:none;color:rgba(255,255,255,.65);padding:13px 16px;
+  font-size:14px;font-weight:600;white-space:nowrap;border-bottom:3px solid transparent;
+}
+.tab-btn.active{color:#fff;border-bottom-color:var(--amber-500);}
+.tab-btn .badge-count{
+  background:var(--amber-500);color:#fff;border-radius:20px;font-size:11px;padding:1px 7px;margin-left:6px;
+}
+
+main{max-width:1180px;margin:0 auto;padding:26px 20px 70px;}
+.section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap;}
+.section-head h2{font-size:22px;margin:0;color:var(--pine-900);}
+.section-sub{color:var(--ink-600);font-size:13.5px;margin-top:2px;}
+
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:22px;}
+.kpi-card{background:#fff;border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);}
+.kpi-card .num{font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--pine-900);}
+.kpi-card .label{font-size:12.5px;color:var(--ink-600);margin-top:2px;}
+
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center;}
+.toolbar select,.toolbar input[type=text]{
+  padding:9px 12px;border:1.5px solid var(--stone-200);border-radius:8px;background:#fff;font-size:13.5px;
+}
+.spacer{flex:1;}
+
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;}
+.item-card{background:#fff;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);cursor:pointer;transition:transform .1s;}
+.item-card:hover{transform:translateY(-2px);}
+.item-photo{height:130px;background:var(--stone-100) center/cover no-repeat;display:flex;align-items:center;justify-content:center;color:var(--stone-200);font-size:34px;}
+.item-body{padding:12px 14px;}
+.item-name{font-weight:600;font-size:14.5px;color:var(--ink-900);margin-bottom:3px;}
+.item-meta{font-size:12px;color:var(--ink-600);}
+.pill{display:inline-block;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;margin-top:8px;text-transform:uppercase;letter-spacing:.02em;}
+.pill-ok{background:var(--ok-100);color:var(--ok-500);}
+.pill-warn{background:var(--amber-100);color:#8a5f1f;}
+.pill-danger{background:var(--rust-100);color:var(--rust-500);}
+.pill-muted{background:var(--stone-100);color:var(--ink-600);}
+
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);}
+th,td{text-align:left;padding:11px 14px;font-size:13.5px;border-bottom:1px solid var(--stone-100);}
+th{background:var(--stone-100);font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-600);font-weight:700;}
+tr:last-child td{border-bottom:none;}
+.table-wrap{overflow-x:auto;}
+.actions-cell{display:flex;gap:6px;flex-wrap:wrap;}
+.empty-state{text-align:center;padding:50px 20px;color:var(--ink-600);}
+.empty-state .icon{font-size:32px;margin-bottom:8px;}
+
+/* Modal */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(22,48,42,.55);display:flex;align-items:center;justify-content:center;
+  padding:20px;z-index:100;
+}
+.modal{background:var(--stone-50);border-radius:14px;width:100%;max-width:560px;max-height:88vh;overflow-y:auto;box-shadow:0 24px 70px rgba(0,0,0,.4);}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--stone-200);position:sticky;top:0;background:var(--stone-50);}
+.modal-head h3{margin:0;font-size:18px;color:var(--pine-900);}
+.modal-close{background:none;border:none;font-size:20px;color:var(--ink-600);}
+.modal-body{padding:20px 22px;}
+.modal-foot{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px;border-top:1px solid var(--stone-200);}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.helper{font-size:12px;color:var(--ink-600);margin-top:4px;}
+.img-preview{width:100%;height:150px;border-radius:8px;background:var(--stone-100) center/cover no-repeat;margin-bottom:8px;display:flex;align-items:center;justify-content:center;color:var(--stone-200);font-size:30px;}
+
+.report-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;}
+.report-card{background:#fff;border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);}
+.report-card h4{margin:0 0 4px;font-size:14.5px;color:var(--pine-900);}
+.report-card p{margin:0 0 12px;font-size:12.5px;color:var(--ink-600);}
+.report-btns{display:flex;gap:8px;}
+
+.toast{
+  position:fixed;bottom:22px;left:50%;transform:translateX(-50%);
+  background:var(--pine-900);color:#fff;padding:12px 20px;border-radius:8px;font-size:13.5px;
+  box-shadow:0 10px 30px rgba(0,0,0,.3);z-index:200;opacity:0;pointer-events:none;transition:opacity .2s, bottom .2s;
+}
+.toast.show{opacity:1;bottom:32px;}
+
+.spinner{width:16px;height:16px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--pine-900);color:var(--stone-50);font-size:14px;gap:10px;}
+.loading-screen .spinner{border-color:rgba(255,255,255,.25);border-top-color:#fff;width:20px;height:20px;}
+
+@media (max-width:640px){
+  .field-row{grid-template-columns:1fr;}
+  .auth-card{padding:28px 22px;}
+}
+</style>
+</head>
+<body>
+
+<!-- ===================== LOADING ===================== -->
+<div id="loadingScreen" class="loading-screen"><div class="spinner"></div><span>Cargando…</span></div>
+
+<!-- ===================== LOGIN ===================== -->
+<div id="viewLogin" class="auth-wrap hidden">
+  <div class="auth-card">
+    <div class="brand">
+      <div class="brand-mark">CC</div>
+      <div><div class="brand-name">Club Chotacabras</div></div>
+    </div>
+    <h1>Iniciar sesión</h1>
+    <div class="auth-sub">Gestión de material del club</div>
+    <div id="loginError" class="error-msg hidden"></div>
+    <div class="field"><label>Correo electrónico</label><input type="email" id="loginEmail" autocomplete="email"></div>
+    <div class="field"><label>Contraseña</label><input type="password" id="loginPass" autocomplete="current-password"></div>
+    <button class="btn btn-primary" id="btnLogin">Entrar</button>
+    <div class="auth-switch">¿No tienes cuenta? <a id="goRegister">Regístrate</a></div>
+    <div class="auth-switch">¿Olvidaste tu contraseña? <a id="goForgot">Recupérala aquí</a></div>
+  </div>
+</div>
+
+<!-- ===================== RECUPERAR CONTRASEÑA ===================== -->
+<div id="viewForgot" class="auth-wrap hidden">
+  <div class="auth-card">
+    <div class="brand">
+      <div class="brand-mark">CC</div>
+      <div><div class="brand-name">Club Chotacabras</div></div>
+    </div>
+    <h1>Recuperar contraseña</h1>
+    <div class="auth-sub">Te enviaremos un enlace a tu correo para crear una nueva contraseña</div>
+    <div id="forgotError" class="error-msg hidden"></div>
+    <div id="forgotSuccess" class="info-msg hidden"></div>
+    <div class="field"><label>Correo electrónico</label><input type="email" id="forgotEmail" autocomplete="email"></div>
+    <button class="btn btn-primary" id="btnForgotSend">Enviar enlace de recuperación</button>
+    <div class="auth-switch">¿Ya te acuerdas? <a id="goLoginFromForgot">Volver a iniciar sesión</a></div>
+  </div>
+</div>
+
+<!-- ===================== REGISTER ===================== -->
+<div id="viewRegister" class="auth-wrap hidden">
+  <div class="auth-card">
+    <div class="brand">
+      <div class="brand-mark">CC</div>
+      <div><div class="brand-name">Club Chotacabras</div></div>
+    </div>
+    <h1>Crear cuenta</h1>
+    <div class="auth-sub">Un administrador debe aprobar tu acceso antes de poder reservar material</div>
+    <div id="registerError" class="error-msg hidden"></div>
+    <div class="field"><label>Nombre completo</label><input type="text" id="regNombre"></div>
+    <div class="field"><label>Correo electrónico</label><input type="email" id="regEmail"></div>
+    <div class="field"><label>Teléfono</label><input type="tel" id="regTelefono"></div>
+    <div class="field"><label>Contraseña</label><input type="password" id="regPass" autocomplete="new-password"></div>
+    <button class="btn btn-primary" id="btnRegister">Solicitar acceso</button>
+    <div class="auth-switch">¿Ya tienes cuenta? <a id="goLogin">Inicia sesión</a></div>
+  </div>
+</div>
+
+<!-- ===================== PENDIENTE / INACTIVO ===================== -->
+<div id="viewPending" class="pending-wrap hidden">
+  <div class="pending-card">
+    <div class="icon">⏳</div>
+    <h1 id="pendingTitle">Tu cuenta está pendiente de aprobación</h1>
+    <p id="pendingText">Un administrador del club revisará tu solicitud. Te avisaremos en cuanto puedas acceder al sistema.</p>
+    <div style="margin-top:20px;"><button class="btn btn-ghost" id="btnLogoutPending">Cerrar sesión</button></div>
+  </div>
+</div>
+
+<!-- ===================== APP ===================== -->
+<div id="viewApp" class="app-shell hidden">
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">CC</div>
+      <div><div class="brand-name">Club Chotacabras</div></div>
+    </div>
+    <div class="topbar-right">
+      <span id="userNameLabel"></span>
+      <span class="role-badge" id="userRoleBadge"></span>
+      <button class="btn btn-ghost btn-small" id="btnLogout">Salir</button>
+    </div>
+  </div>
+  <div class="tabbar" id="tabbar">
+    <button class="tab-btn active" data-tab="inventario">Inventario</button>
+    <button class="tab-btn" data-tab="reservas">Reservas <span class="badge-count hidden" id="badgeReservasPend">0</span></button>
+    <button class="tab-btn admin-only hidden" data-tab="usuarios">Usuarios <span class="badge-count hidden" id="badgeUsuariosPend">0</span></button>
+    <button class="tab-btn admin-only hidden" data-tab="configuracion">Configuración</button>
+  </div>
+
+  <main>
+    <!-- ---------- INVENTARIO ---------- -->
+    <section id="tab-inventario">
+      <div class="section-head">
+        <div><h2>Inventario</h2><div class="section-sub">Material disponible del club</div></div>
+        <button class="btn btn-primary admin-only hidden" id="btnAddArticulo">+ Agregar artículo</button>
+      </div>
+      <div class="kpi-row">
+        <div class="kpi-card"><div class="num" id="kpiTotal">0</div><div class="label">Total artículos</div></div>
+        <div class="kpi-card"><div class="num" id="kpiDisponibles">0</div><div class="label">Disponibles</div></div>
+        <div class="kpi-card"><div class="num" id="kpiPrestados">0</div><div class="label">Prestados</div></div>
+        <div class="kpi-card"><div class="num" id="kpiMantenimiento">0</div><div class="label">En mantenimiento</div></div>
+      </div>
+      <div class="toolbar">
+        <select id="filtroCategoria"><option value="">Todas las categorías</option></select>
+        <select id="filtroEstadoArt"><option value="">Todos los estados</option></select>
+        <div class="spacer"></div>
+        <input type="text" id="buscarArticulo" placeholder="Buscar artículo…">
+      </div>
+      <div id="articulosGrid" class="card-grid"></div>
+      <div id="articulosEmpty" class="empty-state hidden"><div class="icon">📦</div>No se encontraron artículos</div>
+    </section>
+
+    <!-- ---------- RESERVAS ---------- -->
+    <section id="tab-reservas" class="hidden">
+      <div class="section-head">
+        <div><h2>Reservas</h2><div class="section-sub">Solicitudes de material</div></div>
+        <button class="btn btn-primary" id="btnNuevaReserva">+ Solicitar reserva</button>
+      </div>
+      <div class="kpi-row">
+        <div class="kpi-card"><div class="num" id="kpiResPend">0</div><div class="label">Pendientes</div></div>
+        <div class="kpi-card"><div class="num" id="kpiResAprob">0</div><div class="label">Aprobadas</div></div>
+        <div class="kpi-card"><div class="num" id="kpiResDevuelto">0</div><div class="label">Material devuelto</div></div>
+        <div class="kpi-card"><div class="num" id="kpiResTotal">0</div><div class="label">Total reservas</div></div>
+      </div>
+      <div class="toolbar">
+        <select id="filtroEstadoReserva">
+          <option value="">Todos los estados</option>
+          <option value="pendiente">Pendiente</option>
+          <option value="aprobada">Aprobada</option>
+          <option value="rechazada">Rechazada</option>
+          <option value="completada">Completada</option>
+          <option value="cancelada">Cancelada</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table id="tablaReservas">
+          <thead><tr><th>Artículo</th><th>Solicitante</th><th>Fechas</th><th>Cant.</th><th>Estado</th><th class="admin-only hidden">Acciones</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div id="reservasEmpty" class="empty-state hidden"><div class="icon">🗒️</div>No hay reservas registradas</div>
+    </section>
+
+    <!-- ---------- USUARIOS (admin) ---------- -->
+    <section id="tab-usuarios" class="hidden">
+      <div class="section-head">
+        <div><h2>Gestión de usuarios</h2><div class="section-sub">Administra las cuentas de acceso al sistema</div></div>
+      </div>
+      <div class="table-wrap">
+        <table id="tablaUsuarios">
+          <thead><tr><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ---------- CONFIGURACIÓN (admin) ---------- -->
+    <section id="tab-configuracion" class="hidden">
+      <div class="section-head"><div><h2>Configuración</h2><div class="section-sub">Categorías, estados y reportes</div></div></div>
+
+      <h3 style="font-size:16px;color:var(--pine-900);">Categorías</h3>
+      <div class="toolbar">
+        <input type="text" id="nuevaCategoriaNombre" placeholder="Nombre de categoría">
+        <button class="btn btn-ghost btn-small" id="btnAddCategoria">+ Añadir</button>
+      </div>
+      <div class="table-wrap" style="margin-bottom:26px;">
+        <table id="tablaCategorias"><thead><tr><th>Nombre</th><th>Acciones</th></tr></thead><tbody></tbody></table>
+      </div>
+
+      <h3 style="font-size:16px;color:var(--pine-900);">Estados de artículo</h3>
+      <div class="toolbar">
+        <input type="text" id="nuevoEstadoNombre" placeholder="Nombre de estado">
+        <button class="btn btn-ghost btn-small" id="btnAddEstado">+ Añadir</button>
+      </div>
+      <div class="table-wrap" style="margin-bottom:30px;">
+        <table id="tablaEstados"><thead><tr><th>Nombre</th><th>Acciones</th></tr></thead><tbody></tbody></table>
+      </div>
+
+      <h3 style="font-size:16px;color:var(--pine-900);">Generación de reportes</h3>
+      <div class="report-grid">
+        <div class="report-card">
+          <h4>Inventario completo</h4><p>Lista de todos los artículos del club</p>
+          <div class="report-btns">
+            <button class="btn btn-outline-danger btn-small" onclick="Reportes.inventario('pdf')">PDF</button>
+            <button class="btn btn-ghost btn-small" onclick="Reportes.inventario('xlsx')">Excel</button>
+            <button class="btn btn-ghost btn-small" onclick="Reportes.inventario('doc')">Word</button>
+          </div>
+        </div>
+        <div class="report-card">
+          <h4>Historial de reservas</h4><p>Todas las reservas del sistema</p>
+          <div class="report-btns">
+            <button class="btn btn-outline-danger btn-small" onclick="Reportes.reservas('pdf')">PDF</button>
+            <button class="btn btn-ghost btn-small" onclick="Reportes.reservas('xlsx')">Excel</button>
+            <button class="btn btn-ghost btn-small" onclick="Reportes.reservas('doc')">Word</button>
+          </div>
+        </div>
+        <div class="report-card">
+          <h4>Listado de usuarios</h4><p>Todos los usuarios registrados</p>
+          <div class="report-btns">
+            <button class="btn btn-outline-danger btn-small" onclick="Reportes.usuarios('pdf')">PDF</button>
+            <button class="btn btn-ghost btn-small" onclick="Reportes.usuarios('xlsx')">Excel</button>
+            <button class="btn btn-ghost btn-small" onclick="Reportes.usuarios('doc')">Word</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ===================== MODALES ===================== -->
+
+<!-- Detalle / Alta / Edición artículo -->
+<div id="modalArticulo" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-head"><h3 id="modalArticuloTitulo">Artículo</h3><button class="modal-close" data-close>&times;</button></div>
+    <div class="modal-body">
+      <div id="artFormFields">
+        <div class="img-preview" id="artImgPreview">📷</div>
+        <div class="field"><label>Imagen</label><input type="file" id="artImagenFile" accept="image/*"></div>
+        <div class="field"><label>Nombre del artículo *</label><input type="text" id="artNombre"></div>
+        <div class="field-row">
+          <div class="field"><label>Categoría *</label><select id="artCategoria"></select></div>
+          <div class="field"><label>Estado *</label><select id="artEstado"></select></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Marca</label><input type="text" id="artMarca"></div>
+          <div class="field"><label>Talla</label><input type="text" id="artTalla"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Cantidad total *</label><input type="number" min="0" id="artCantTotal"></div>
+          <div class="field"><label>Cantidad disponible *</label><input type="number" min="0" id="artCantDisp"></div>
+        </div>
+        <div class="field"><label>Ubicación</label><input type="text" id="artUbicacion"></div>
+        <div class="field"><label>Descripción</label><textarea id="artDescripcion" rows="3"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline-danger admin-only hidden" id="btnDeleteArticulo">Eliminar</button>
+      <div class="spacer"></div>
+      <button class="btn btn-ghost" data-close>Cancelar</button>
+      <button class="btn btn-primary admin-only hidden" id="btnSaveArticulo">Guardar</button>
+      <button class="btn btn-primary" id="btnReservarDesdeDetalle">Reservar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Solicitar reserva -->
+<div id="modalReserva" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-head"><h3>Solicitar reserva</h3><button class="modal-close" data-close>&times;</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Artículo *</label><select id="resArticulo"></select></div>
+      <div class="field-row">
+        <div class="field"><label>Fecha de inicio *</label><input type="date" id="resFechaInicio"></div>
+        <div class="field"><label>Fecha de fin *</label><input type="date" id="resFechaFin"></div>
+      </div>
+      <div class="field"><label>Cantidad de unidades *</label><input type="number" min="1" value="1" id="resCantidad"></div>
+      <div class="field"><label>Motivo de la reserva *</label><textarea id="resMotivo" rows="2"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" data-close>Cancelar</button>
+      <button class="btn btn-primary" id="btnEnviarReserva">Enviar solicitud</button>
+    </div>
+  </div>
+</div>
+
+<!-- Registrar devolución -->
+<div id="modalDevolucion" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-head"><h3>Registrar devolución</h3><button class="modal-close" data-close>&times;</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Fecha de devolución *</label><input type="date" id="devFecha"></div>
+      <div class="field"><label>Estado del material *</label>
+        <select id="devEstado">
+          <option value="perfecto">✅ Perfecto — sin ningún problema</option>
+          <option value="bueno">👍 Buen estado — desgaste normal</option>
+          <option value="revision">🔍 Necesita revisión</option>
+          <option value="reparacion_menor">🔧 Necesita reparación menor</option>
+          <option value="danado">⚠️ Dañado — reparación importante</option>
+        </select>
+      </div>
+      <div class="field"><label>Observaciones</label><textarea id="devObservaciones" rows="2"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" data-close>Cancelar</button>
+      <button class="btn btn-primary" id="btnGuardarDevolucion">Registrar devolución</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<!-- ===================== FIREBASE ===================== -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  onAuthStateChanged, signOut, sendPasswordResetEmail
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, collection, doc, setDoc, getDoc, getDocs, addDoc,
+  updateDoc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCFbg8wpDA0KbenxCyIjDTaMuPOV-2tWQQ",
+  authDomain: "club-chotacabras.firebaseapp.com",
+  projectId: "club-chotacabras",
+  storageBucket: "club-chotacabras.firebasestorage.app",
+  messagingSenderId: "148450598655",
+  appId: "1:148450598655:web:9dd274b89e3fbe1b91b6ca"
+};
+const fbApp = initializeApp(firebaseConfig);
+const auth = getAuth(fbApp);
+const db = getFirestore(fbApp);
+
+const CLOUDINARY_CLOUD = "p8ou7hmr";
+const CLOUDINARY_PRESET = "club_chotacabras";
+
+/* ---------------- Estado global ---------------- */
+const State = {
+  user:null, userDoc:null, isAdmin:false,
+  articulos:[], reservas:[], usuarios:[], categorias:[], estados:[],
+  editingArticuloId:null, reservandoArticuloId:null, devolucionReservaId:null
+};
+
+/* ---------------- Utilidades ---------------- */
+function $(id){return document.getElementById(id);}
+function showToast(msg){
+  const t=$('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2600);
+}
+function showView(id){
+  ['viewLogin','viewRegister','viewForgot','viewPending','viewApp','loadingScreen'].forEach(v=>$(v).classList.add('hidden'));
+  $(id).classList.remove('hidden');
+}
+function fmtDate(d){
+  if(!d) return '—';
+  if(d.toDate) d=d.toDate();
+  if(typeof d==='string') return d;
+  return new Date(d).toLocaleDateString('es-ES');
+}
+function todayStr(){return new Date().toISOString().slice(0,10);}
+
+const ESTADO_PILL = {
+  disponible:'pill-ok', prestado:'pill-warn', mantenimiento:'pill-danger', agotado:'pill-muted',
+  pendiente:'pill-warn', aprobada:'pill-ok', rechazada:'pill-danger', completada:'pill-muted', cancelada:'pill-muted',
+  activo:'pill-ok', inactivo:'pill-muted'
+};
+
+/* ---------------- Auth ---------------- */
+$('goRegister').onclick = ()=>showView('viewRegister');
+$('goLogin').onclick = ()=>showView('viewLogin');
+$('goForgot').onclick = ()=>{
+  $('forgotError').classList.add('hidden'); $('forgotSuccess').classList.add('hidden');
+  $('forgotEmail').value = $('loginEmail').value || '';
+  showView('viewForgot');
+};
+$('goLoginFromForgot').onclick = ()=>showView('viewLogin');
+
+$('btnForgotSend').onclick = async ()=>{
+  $('forgotError').classList.add('hidden'); $('forgotSuccess').classList.add('hidden');
+  const email = $('forgotEmail').value.trim();
+  if(!email){ $('forgotError').textContent='Escribe tu correo electrónico.'; $('forgotError').classList.remove('hidden'); return; }
+  $('btnForgotSend').disabled=true; $('btnForgotSend').textContent='Enviando…';
+  try{
+    await sendPasswordResetEmail(auth, email);
+    $('forgotSuccess').textContent='Te hemos enviado un correo con el enlace para restablecer tu contraseña. Revisa también la carpeta de spam.';
+    $('forgotSuccess').classList.remove('hidden');
+  }catch(e){
+    // Por seguridad, no revelamos si el correo existe o no en el sistema.
+    $('forgotSuccess').textContent='Si ese correo está registrado, recibirás un enlace para restablecer tu contraseña en unos minutos.';
+    $('forgotSuccess').classList.remove('hidden');
+  }
+  $('btnForgotSend').disabled=false; $('btnForgotSend').textContent='Enviar enlace de recuperación';
+};
+
+$('btnLogin').onclick = async ()=>{
+  $('loginError').classList.add('hidden');
+  const email=$('loginEmail').value.trim(), pass=$('loginPass').value;
+  if(!email||!pass){ $('loginError').textContent='Introduce correo y contraseña.'; $('loginError').classList.remove('hidden'); return; }
+  try{
+    await signInWithEmailAndPassword(auth, email, pass);
+  }catch(e){
+    $('loginError').textContent='No hemos podido iniciar sesión. Revisa tu correo y contraseña.';
+    $('loginError').classList.remove('hidden');
+  }
+};
+
+$('btnRegister').onclick = async ()=>{
+  $('registerError').classList.add('hidden');
+  const nombre=$('regNombre').value.trim(), email=$('regEmail').value.trim(),
+        telefono=$('regTelefono').value.trim(), pass=$('regPass').value;
+  if(!nombre||!email||!pass){ $('registerError').textContent='Rellena nombre, correo y contraseña.'; $('registerError').classList.remove('hidden'); return; }
+  if(pass.length<6){ $('registerError').textContent='La contraseña debe tener al menos 6 caracteres.'; $('registerError').classList.remove('hidden'); return; }
+  try{
+    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    await setDoc(doc(db,'usuarios',cred.user.uid), {
+      nombre, email, telefono, rol:'usuario', estado:'pendiente', creado: serverTimestamp()
+    });
+  }catch(e){
+    $('registerError').textContent = e.code==='auth/email-already-in-use' ? 'Ese correo ya está registrado.' : 'No se pudo crear la cuenta.';
+    $('registerError').classList.remove('hidden');
+  }
+};
+
+$('btnLogoutPending').onclick = ()=>signOut(auth);
+$('btnLogout').onclick = ()=>signOut(auth);
+
+onAuthStateChanged(auth, async (user)=>{
+  if(!user){ State.user=null; State.userDoc=null; teardownListeners(); showView('viewLogin'); return; }
+  State.user=user;
+  const snap = await getDoc(doc(db,'usuarios',user.uid));
+  if(!snap.exists()){ showView('viewLogin'); return; }
+  State.userDoc = snap.data();
+  if(State.userDoc.estado==='pendiente'){
+    $('pendingTitle').textContent='Tu cuenta está pendiente de aprobación';
+    $('pendingText').textContent='Un administrador del club revisará tu solicitud. Te avisaremos en cuanto puedas acceder al sistema.';
+    showView('viewPending'); return;
+  }
+  if(State.userDoc.estado==='inactivo'){
+    $('pendingTitle').textContent='Tu cuenta está desactivada';
+    $('pendingText').textContent='Contacta con un administrador del club si crees que esto es un error.';
+    showView('viewPending'); return;
+  }
+  State.isAdmin = State.userDoc.rol==='administrador';
+  $('userNameLabel').textContent = State.userDoc.nombre;
+  $('userRoleBadge').textContent = State.isAdmin ? 'Administrador' : 'Socio';
+  document.querySelectorAll('.admin-only').forEach(el=> State.isAdmin ? el.classList.remove('hidden') : el.classList.add('hidden'));
+  showView('viewApp');
+  await ensureDefaults();
+  setupListeners();
+});
+
+/* ---------------- Categorías / Estados por defecto ---------------- */
+async function ensureDefaults(){
+  const catSnap = await getDocs(collection(db,'categorias'));
+  if(catSnap.empty){
+    const defs=['Escalada','Camping','Senderismo','Seguridad','Ropa','Calzado','Accesorios','Otros'];
+    for(const n of defs) await addDoc(collection(db,'categorias'), {nombre:n, activa:true});
+  }
+  const estSnap = await getDocs(collection(db,'estados'));
+  if(estSnap.empty){
+    const defs=[{n:'Disponible',c:'#4c7a4f'},{n:'Prestado',c:'#c1852e'},{n:'En mantenimiento',c:'#a8492f'},{n:'Agotado',c:'#4b5449'}];
+    for(const d of defs) await addDoc(collection(db,'estados'), {nombre:d.n, color:d.c, activo:true});
+  }
+}
+
+/* ---------------- Listeners tiempo real ---------------- */
+let unsubs=[];
+function teardownListeners(){ unsubs.forEach(u=>u()); unsubs=[]; }
+function setupListeners(){
+  teardownListeners();
+  unsubs.push(onSnapshot(collection(db,'articulos'), snap=>{
+    State.articulos = snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderArticulos(); renderKpisInventario(); fillArticuloSelects();
+  }));
+  unsubs.push(onSnapshot(collection(db,'reservas'), snap=>{
+    State.reservas = snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderReservas(); renderKpisReservas(); updateBadges();
+  }));
+  unsubs.push(onSnapshot(collection(db,'usuarios'), snap=>{
+    State.usuarios = snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderUsuarios(); updateBadges();
+  }));
+  unsubs.push(onSnapshot(collection(db,'categorias'), snap=>{
+    State.categorias = snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderCategoriasConfig(); fillFiltros();
+  }));
+  unsubs.push(onSnapshot(collection(db,'estados'), snap=>{
+    State.estados = snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderEstadosConfig(); fillFiltros();
+  }));
+}
+
+function updateBadges(){
+  const pendRes = State.reservas.filter(r=>r.estado==='pendiente').length;
+  const pendUsr = State.usuarios.filter(u=>u.estado==='pendiente').length;
+  $('badgeReservasPend').textContent=pendRes; $('badgeReservasPend').classList.toggle('hidden', pendRes===0);
+  $('badgeUsuariosPend').textContent=pendUsr; $('badgeUsuariosPend').classList.toggle('hidden', pendUsr===0);
+}
+
+/* ---------------- Tabs ---------------- */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.onclick=()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    ['inventario','reservas','usuarios','configuracion'].forEach(t=>{
+      $('tab-'+t).classList.toggle('hidden', t!==btn.dataset.tab);
+    });
+  };
+});
+
+/* ---------------- Filtros ---------------- */
+function fillFiltros(){
+  const catSel=$('filtroCategoria'), artCat=$('artCategoria');
+  const curCat=catSel.value;
+  catSel.innerHTML='<option value="">Todas las categorías</option>'+State.categorias.map(c=>`<option value="${c.nombre}">${c.nombre}</option>`).join('');
+  catSel.value=curCat;
+  artCat.innerHTML = State.categorias.map(c=>`<option value="${c.nombre}">${c.nombre}</option>`).join('');
+
+  const estSel=$('filtroEstadoArt'), artEst=$('artEstado');
+  const curEst=estSel.value;
+  estSel.innerHTML='<option value="">Todos los estados</option>'+State.estados.map(e=>`<option value="${e.nombre}">${e.nombre}</option>`).join('');
+  estSel.value=curEst;
+  artEst.innerHTML = State.estados.map(e=>`<option value="${e.nombre}">${e.nombre}</option>`).join('');
+}
+['filtroCategoria','filtroEstadoArt','buscarArticulo'].forEach(id=>$(id).addEventListener('input', renderArticulos));
+$('filtroEstadoReserva').addEventListener('change', renderReservas);
+
+/* ---------------- Render: Inventario ---------------- */
+function renderKpisInventario(){
+  $('kpiTotal').textContent=State.articulos.length;
+  $('kpiDisponibles').textContent=State.articulos.filter(a=>(a.estado||'').toLowerCase()==='disponible').length;
+  $('kpiPrestados').textContent=State.articulos.filter(a=>(a.estado||'').toLowerCase()==='prestado').length;
+  $('kpiMantenimiento').textContent=State.articulos.filter(a=>(a.estado||'').toLowerCase().includes('mantenimiento')).length;
+}
+function renderArticulos(){
+  const cat=$('filtroCategoria').value, est=$('filtroEstadoArt').value, q=$('buscarArticulo').value.toLowerCase();
+  let list=State.articulos.filter(a=>{
+    if(cat && a.categoria!==cat) return false;
+    if(est && a.estado!==est) return false;
+    if(q && !(a.nombre||'').toLowerCase().includes(q)) return false;
+    return true;
+  });
+  const grid=$('articulosGrid'); grid.innerHTML='';
+  $('articulosEmpty').classList.toggle('hidden', list.length>0);
+  list.forEach(a=>{
+    const pillClass = ESTADO_PILL[(a.estado||'').toLowerCase()] || 'pill-muted';
+    const card=document.createElement('div'); card.className='item-card';
+    card.innerHTML=`
+      <div class="item-photo" style="${a.imagenUrl?`background-image:url('${a.imagenUrl}')`:''}">${a.imagenUrl?'':'📦'}</div>
+      <div class="item-body">
+        <div class="item-name">${a.nombre||''}</div>
+        <div class="item-meta">${a.categoria||''} · ${a.cantidadDisponible ?? 0}/${a.cantidadTotal ?? 0} disp.</div>
+        <span class="pill ${pillClass}">${a.estado||''}</span>
+      </div>`;
+    card.onclick=()=>openArticuloModal(a.id);
+    grid.appendChild(card);
+  });
+}
+function fillArticuloSelects(){
+  $('resArticulo').innerHTML = State.articulos.map(a=>`<option value="${a.id}">${a.nombre} (${a.cantidadDisponible ?? 0} disp.)</option>`).join('');
+}
+
+/* ---------------- Modal Artículo ---------------- */
+let artImagenUrlTmp=null, artImagenPendingFile=null;
+function resetArtForm(){
+  State.editingArticuloId=null; artImagenUrlTmp=null; artImagenPendingFile=null;
+  ['artNombre','artMarca','artTalla','artUbicacion','artDescripcion'].forEach(id=>$(id).value='');
+  $('artCantTotal').value=1; $('artCantDisp').value=1;
+  $('artImgPreview').style.backgroundImage=''; $('artImgPreview').textContent='📷';
+  $('artImagenFile').value='';
+}
+function openArticuloModal(id){
+  resetArtForm();
+  const isNew = !id;
+  State.editingArticuloId = id||null;
+  $('modalArticuloTitulo').textContent = isNew ? 'Agregar artículo' : (State.isAdmin ? 'Editar artículo' : 'Detalles del artículo');
+  document.querySelectorAll('#artFormFields input,#artFormFields select,#artFormFields textarea').forEach(el=> el.disabled = !State.isAdmin);
+  $('btnSaveArticulo').classList.toggle('hidden', !State.isAdmin);
+  $('btnDeleteArticulo').classList.toggle('hidden', !State.isAdmin || isNew);
+  $('btnReservarDesdeDetalle').classList.toggle('hidden', isNew);
+  if(!isNew){
+    const a=State.articulos.find(x=>x.id===id);
+    if(a){
+      $('artNombre').value=a.nombre||''; $('artCategoria').value=a.categoria||''; $('artEstado').value=a.estado||'';
+      $('artMarca').value=a.marca||''; $('artTalla').value=a.talla||'';
+      $('artCantTotal').value=a.cantidadTotal||0; $('artCantDisp').value=a.cantidadDisponible||0;
+      $('artUbicacion').value=a.ubicacion||''; $('artDescripcion').value=a.descripcion||'';
+      if(a.imagenUrl){ $('artImgPreview').style.backgroundImage=`url('${a.imagenUrl}')`; $('artImgPreview').textContent=''; artImagenUrlTmp=a.imagenUrl; }
+    }
+  }
+  $('modalArticulo').classList.remove('hidden');
+}
+$('btnAddArticulo').onclick=()=>openArticuloModal(null);
+$('artImagenFile').addEventListener('change', e=>{
+  const f=e.target.files[0]; if(!f) return;
+  artImagenPendingFile=f;
+  const reader=new FileReader();
+  reader.onload=ev=>{ $('artImgPreview').style.backgroundImage=`url('${ev.target.result}')`; $('artImgPreview').textContent=''; };
+  reader.readAsDataURL(f);
+});
+async function uploadToCloudinary(file){
+  const fd=new FormData(); fd.append('file',file); fd.append('upload_preset',CLOUDINARY_PRESET);
+  const res=await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, {method:'POST', body:fd});
+  const json=await res.json();
+  if(!json.secure_url) throw new Error('Error al subir imagen');
+  return json.secure_url;
+}
+$('btnSaveArticulo').onclick = async ()=>{
+  const nombre=$('artNombre').value.trim();
+  if(!nombre){ showToast('El nombre es obligatorio'); return; }
+  $('btnSaveArticulo').disabled=true; $('btnSaveArticulo').textContent='Guardando…';
+  try{
+    let imagenUrl = artImagenUrlTmp;
+    if(artImagenPendingFile){ imagenUrl = await uploadToCloudinary(artImagenPendingFile); }
+    const data={
+      nombre, categoria:$('artCategoria').value, estado:$('artEstado').value,
+      marca:$('artMarca').value.trim(), talla:$('artTalla').value.trim(),
+      cantidadTotal:Number($('artCantTotal').value)||0, cantidadDisponible:Number($('artCantDisp').value)||0,
+      ubicacion:$('artUbicacion').value.trim(), descripcion:$('artDescripcion').value.trim(),
+      imagenUrl: imagenUrl||''
+    };
+    if(State.editingArticuloId){
+      await updateDoc(doc(db,'articulos',State.editingArticuloId), data);
+      await logGestion('editar_articulo', State.editingArticuloId, nombre, '', 'Artículo actualizado');
+    }else{
+      data.creado=serverTimestamp();
+      const ref=await addDoc(collection(db,'articulos'), data);
+      await logGestion('agregar_articulo', ref.id, nombre, '', 'Artículo agregado al inventario');
+    }
+    closeModals(); showToast('Artículo guardado');
+  }catch(e){ showToast('No se pudo guardar el artículo'); }
+  $('btnSaveArticulo').disabled=false; $('btnSaveArticulo').textContent='Guardar';
+};
+$('btnDeleteArticulo').onclick = async ()=>{
+  if(!State.editingArticuloId) return;
+  if(!confirm('¿Eliminar este artículo del inventario?')) return;
+  const a=State.articulos.find(x=>x.id===State.editingArticuloId);
+  await deleteDoc(doc(db,'articulos',State.editingArticuloId));
+  await logGestion('eliminar_articulo', State.editingArticuloId, a?.nombre||'', '', 'Artículo eliminado del inventario');
+  closeModals(); showToast('Artículo eliminado');
+};
+$('btnReservarDesdeDetalle').onclick = ()=>{
+  const id=State.editingArticuloId; closeModals();
+  if(id) openReservaModal(id);
+};
+
+/* ---------------- Modal Reserva ---------------- */
+function openReservaModal(articuloId){
+  $('resFechaInicio').value=todayStr(); $('resFechaFin').value=todayStr();
+  $('resCantidad').value=1; $('resMotivo').value='';
+  if(articuloId) $('resArticulo').value=articuloId;
+  $('modalReserva').classList.remove('hidden');
+}
+$('btnNuevaReserva').onclick=()=>openReservaModal(null);
+$('btnEnviarReserva').onclick = async ()=>{
+  const artId=$('resArticulo').value;
+  const art=State.articulos.find(a=>a.id===artId);
+  const fi=$('resFechaInicio').value, ff=$('resFechaFin').value, cant=Number($('resCantidad').value)||1, motivo=$('resMotivo').value.trim();
+  if(!art){ showToast('Selecciona un artículo'); return; }
+  if(!fi||!ff){ showToast('Indica las fechas'); return; }
+  if(ff<fi){ showToast('La fecha de fin no puede ser anterior al inicio'); return; }
+  if(!motivo){ showToast('Indica el motivo de la reserva'); return; }
+  if(cant > (art.cantidadDisponible ?? 0)){ showToast('No hay suficiente cantidad disponible'); return; }
+  $('btnEnviarReserva').disabled=true;
+  try{
+    await addDoc(collection(db,'reservas'), {
+      articuloId:artId, articuloNombre:art.nombre,
+      usuarioId:State.user.uid, usuarioNombre:State.userDoc.nombre, email:State.userDoc.email, telefono:State.userDoc.telefono||'',
+      fechaInicio:fi, fechaFin:ff, cantidad:cant, motivo, estado:'pendiente', creado:serverTimestamp()
+    });
+    closeModals(); showToast('Solicitud de reserva enviada');
+  }catch(e){ showToast('No se pudo enviar la solicitud'); }
+  $('btnEnviarReserva').disabled=false;
+};
+
+/* ---------------- Render: Reservas ---------------- */
+function renderKpisReservas(){
+  $('kpiResPend').textContent=State.reservas.filter(r=>r.estado==='pendiente').length;
+  $('kpiResAprob').textContent=State.reservas.filter(r=>r.estado==='aprobada').length;
+  $('kpiResDevuelto').textContent=State.reservas.filter(r=>r.estado==='completada').length;
+  $('kpiResTotal').textContent=State.reservas.length;
+}
+function renderReservas(){
+  const filtro=$('filtroEstadoReserva').value;
+  let list=State.reservas.filter(r=> !filtro || r.estado===filtro);
+  list.sort((a,b)=> (b.creado?.seconds||0) - (a.creado?.seconds||0));
+  const tbody=document.querySelector('#tablaReservas tbody'); tbody.innerHTML='';
+  $('reservasEmpty').classList.toggle('hidden', list.length>0);
+  list.forEach(r=>{
+    const pillClass=ESTADO_PILL[r.estado]||'pill-muted';
+    const tr=document.createElement('tr');
+    let acciones='';
+    if(State.isAdmin){
+      if(r.estado==='pendiente'){
+        acciones=`<button class="btn btn-small btn-primary" data-approve="${r.id}">Aprobar</button>
+                   <button class="btn btn-small btn-outline-danger" data-reject="${r.id}">Rechazar</button>`;
+      }else if(r.estado==='aprobada'){
+        acciones=`<button class="btn btn-small btn-ghost" data-return="${r.id}">Registrar devolución</button>`;
+      }
+    } else if(r.usuarioId===State.user.uid && r.estado==='pendiente'){
+      acciones=`<button class="btn btn-small btn-outline-danger" data-cancel="${r.id}">Cancelar</button>`;
+    }
+    tr.innerHTML=`
+      <td>${r.articuloNombre||''}</td>
+      <td>${r.usuarioNombre||''}</td>
+      <td class="mono">${fmtDate(r.fechaInicio)} → ${fmtDate(r.fechaFin)}</td>
+      <td class="mono">${r.cantidad||1}</td>
+      <td><span class="pill ${pillClass}">${r.estado}</span></td>
+      <td class="actions-cell ${State.isAdmin?'':''}">${acciones}</td>`;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('[data-approve]').forEach(b=>b.onclick=()=>aprobarReserva(b.dataset.approve));
+  tbody.querySelectorAll('[data-reject]').forEach(b=>b.onclick=()=>rechazarReserva(b.dataset.reject));
+  tbody.querySelectorAll('[data-cancel]').forEach(b=>b.onclick=()=>cancelarReserva(b.dataset.cancel));
+  tbody.querySelectorAll('[data-return]').forEach(b=>b.onclick=()=>openDevolucionModal(b.dataset.return));
+}
+async function aprobarReserva(id){
+  const r=State.reservas.find(x=>x.id===id); if(!r) return;
+  const art=State.articulos.find(a=>a.id===r.articuloId);
+  if(art){
+    const nuevaDisp=Math.max(0,(art.cantidadDisponible||0)-(r.cantidad||1));
+    await updateDoc(doc(db,'articulos',art.id), {cantidadDisponible:nuevaDisp, estado: nuevaDisp===0?'Prestado':art.estado});
+  }
+  await updateDoc(doc(db,'reservas',id), {estado:'aprobada'});
+  await logGestion('aprobar_reserva', r.articuloId, r.articuloNombre, r.cantidad, `Reserva aprobada para ${r.usuarioNombre}`);
+  showToast('Reserva aprobada');
+}
+async function rechazarReserva(id){
+  const r=State.reservas.find(x=>x.id===id);
+  await updateDoc(doc(db,'reservas',id), {estado:'rechazada'});
+  await logGestion('rechazar_reserva', r?.articuloId||'', r?.articuloNombre||'', r?.cantidad||0, `Reserva rechazada para ${r?.usuarioNombre||''}`);
+  showToast('Reserva rechazada');
+}
+async function cancelarReserva(id){
+  if(!confirm('¿Cancelar esta solicitud?')) return;
+  await updateDoc(doc(db,'reservas',id), {estado:'cancelada'});
+  showToast('Reserva cancelada');
+}
+function openDevolucionModal(id){
+  State.devolucionReservaId=id;
+  $('devFecha').value=todayStr(); $('devEstado').value='perfecto'; $('devObservaciones').value='';
+  $('modalDevolucion').classList.remove('hidden');
+}
+$('btnGuardarDevolucion').onclick = async ()=>{
+  const id=State.devolucionReservaId; if(!id) return;
+  const r=State.reservas.find(x=>x.id===id);
+  const art=State.articulos.find(a=>a.id===r?.articuloId);
+  await updateDoc(doc(db,'reservas',id), {
+    estado:'completada',
+    devolucion:{ fecha:$('devFecha').value, estadoMaterial:$('devEstado').value, observaciones:$('devObservaciones').value.trim() }
+  });
+  if(art){
+    const nuevaDisp=Math.min((art.cantidadTotal||0), (art.cantidadDisponible||0)+(r?.cantidad||1));
+    const necesitaMantenimiento = ['revision','reparacion_menor','danado'].includes($('devEstado').value);
+    await updateDoc(doc(db,'articulos',art.id), {
+      cantidadDisponible:nuevaDisp,
+      estado: necesitaMantenimiento ? 'Mantenimiento' : 'Disponible'
+    });
+  }
+  await logGestion('completar_reserva', r?.articuloId||'', r?.articuloNombre||'', r?.cantidad||0, 'Devolución registrada');
+  closeModals(); showToast('Devolución registrada');
+};
+
+/* ---------------- Render: Usuarios ---------------- */
+function renderUsuarios(){
+  const tbody=document.querySelector('#tablaUsuarios tbody'); tbody.innerHTML='';
+  const list=[...State.usuarios].sort((a,b)=> (a.estado==='pendiente'?-1:1) - (b.estado==='pendiente'?-1:1));
+  list.forEach(u=>{
+    const pillClass=ESTADO_PILL[u.estado]||'pill-muted';
+    const tr=document.createElement('tr');
+    let acciones='';
+    if(u.estado==='pendiente'){
+      acciones+=`<button class="btn btn-small btn-primary" data-approve-user="${u.id}">Aprobar</button>`;
+    }
+    if(u.estado!=='inactivo'){
+      acciones+=`<button class="btn btn-small btn-outline-danger" data-deactivate-user="${u.id}">Desactivar</button>`;
+    }else{
+      acciones+=`<button class="btn btn-small btn-ghost" data-activate-user="${u.id}">Reactivar</button>`;
+    }
+    if(u.rol!=='administrador'){
+      acciones+=`<button class="btn btn-small btn-ghost" data-makeadmin="${u.id}">Hacer admin</button>`;
+    }
+    tr.innerHTML=`<td>${u.nombre||''}</td><td>${u.email||''}</td><td>${u.telefono||''}</td>
+      <td>${u.rol==='administrador'?'👑 Admin':'👤 Socio'}</td>
+      <td><span class="pill ${pillClass}">${u.estado}</span></td>
+      <td class="actions-cell">${acciones}</td>`;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('[data-approve-user]').forEach(b=>b.onclick=()=>updateDoc(doc(db,'usuarios',b.dataset.approveUser),{estado:'activo'}).then(()=>showToast('Usuario aprobado')));
+  tbody.querySelectorAll('[data-deactivate-user]').forEach(b=>b.onclick=()=>{ if(confirm('¿Desactivar este usuario?')) updateDoc(doc(db,'usuarios',b.dataset.deactivateUser),{estado:'inactivo'}).then(()=>showToast('Usuario desactivado')); });
+  tbody.querySelectorAll('[data-activate-user]').forEach(b=>b.onclick=()=>updateDoc(doc(db,'usuarios',b.dataset.activateUser),{estado:'activo'}).then(()=>showToast('Usuario reactivado')));
+  tbody.querySelectorAll('[data-makeadmin]').forEach(b=>b.onclick=()=>{ if(confirm('¿Convertir en administrador?')) updateDoc(doc(db,'usuarios',b.dataset.makeadmin),{rol:'administrador'}).then(()=>showToast('Ahora es administrador')); });
+}
+
+/* ---------------- Configuración: categorías / estados ---------------- */
+function renderCategoriasConfig(){
+  const tbody=document.querySelector('#tablaCategorias tbody'); tbody.innerHTML='';
+  State.categorias.forEach(c=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${c.nombre}</td><td><button class="btn btn-small btn-outline-danger" data-delcat="${c.id}">Eliminar</button></td>`;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('[data-delcat]').forEach(b=>b.onclick=()=>{ if(confirm('¿Eliminar categoría?')) deleteDoc(doc(db,'categorias',b.dataset.delcat)); });
+}
+function renderEstadosConfig(){
+  const tbody=document.querySelector('#tablaEstados tbody'); tbody.innerHTML='';
+  State.estados.forEach(e=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${e.nombre}</td><td><button class="btn btn-small btn-outline-danger" data-delest="${e.id}">Eliminar</button></td>`;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('[data-delest]').forEach(b=>b.onclick=()=>{ if(confirm('¿Eliminar estado?')) deleteDoc(doc(db,'estados',b.dataset.delest)); });
+}
+$('btnAddCategoria').onclick=async()=>{
+  const n=$('nuevaCategoriaNombre').value.trim(); if(!n) return;
+  await addDoc(collection(db,'categorias'),{nombre:n, activa:true}); $('nuevaCategoriaNombre').value='';
+};
+$('btnAddEstado').onclick=async()=>{
+  const n=$('nuevoEstadoNombre').value.trim(); if(!n) return;
+  await addDoc(collection(db,'estados'),{nombre:n, activo:true}); $('nuevoEstadoNombre').value='';
+};
+
+/* ---------------- Registro de gestiones ---------------- */
+async function logGestion(tipo, articuloId, articuloNombre, cantidad, descripcion){
+  try{
+    await addDoc(collection(db,'gestiones'), {
+      fecha:serverTimestamp(), usuarioNombre:State.userDoc?.nombre||'', tipo, articuloId, articuloNombre, cantidad, descripcion
+    });
+  }catch(e){}
+}
+
+/* ---------------- Modales: cerrar ---------------- */
+document.querySelectorAll('[data-close]').forEach(el=>el.onclick=closeModals);
+document.querySelectorAll('.modal-overlay').forEach(ov=>ov.addEventListener('click', e=>{ if(e.target===ov) closeModals(); }));
+function closeModals(){ document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.add('hidden')); }
+
+/* ---------------- Reportes ---------------- */
+function descargarBlob(blob, filename){
+  const url=URL.createObjectURL(blob); const a=document.createElement('a');
+  a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 3000);
+}
+function tablaHTML(titulo, headers, rows){
+  return `<html><head><meta charset="utf-8"></head><body>
+    <h2>${titulo}</h2>
+    <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-family:Arial;font-size:12px;">
+      <thead><tr>${headers.map(h=>`<th style="background:#eee;">${h}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c ?? ''}</td>`).join('')}</tr>`).join('')}</tbody>
+    </table></body></html>`;
+}
+const Reportes = {
+  _export(kind, titulo, headers, rows, filenameBase){
+    if(kind==='pdf'){
+      const { jsPDF } = window.jspdf;
+      const pdf=new jsPDF({orientation: headers.length>5 ? 'landscape':'portrait'});
+      pdf.setFontSize(14); pdf.text(titulo, 14, 15);
+      pdf.autoTable({ head:[headers], body:rows, startY:22, styles:{fontSize:8} });
+      pdf.save(`${filenameBase}.pdf`);
+    }else if(kind==='xlsx'){
+      const ws=XLSX.utils.aoa_to_sheet([headers, ...rows]);
+      const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Datos');
+      XLSX.writeFile(wb, `${filenameBase}.xlsx`);
+    }else if(kind==='doc'){
+      const html=tablaHTML(titulo, headers, rows);
+      descargarBlob(new Blob(['\ufeff', html], {type:'application/msword'}), `${filenameBase}.doc`);
+    }
+  },
+  inventario(kind){
+    const headers=['Nombre','Categoría','Marca','Talla','Total','Disponible','Estado','Ubicación'];
+    const rows=State.articulos.map(a=>[a.nombre,a.categoria,a.marca,a.talla,a.cantidadTotal,a.cantidadDisponible,a.estado,a.ubicacion]);
+    this._export(kind, 'Inventario completo — Club Chotacabras', headers, rows, 'inventario_club_chotacabras');
+  },
+  reservas(kind){
+    const headers=['Artículo','Solicitante','Email','Inicio','Fin','Cantidad','Estado'];
+    const rows=State.reservas.map(r=>[r.articuloNombre,r.usuarioNombre,r.email,fmtDate(r.fechaInicio),fmtDate(r.fechaFin),r.cantidad,r.estado]);
+    this._export(kind, 'Historial de reservas — Club Chotacabras', headers, rows, 'reservas_club_chotacabras');
+  },
+  usuarios(kind){
+    const headers=['Nombre','Email','Teléfono','Rol','Estado'];
+    const rows=State.usuarios.map(u=>[u.nombre,u.email,u.telefono,u.rol,u.estado]);
+    this._export(kind, 'Listado de usuarios — Club Chotacabras', headers, rows, 'usuarios_club_chotacabras');
+  }
+};
+window.Reportes = Reportes;
+
+/* ---------------- Inicio ---------------- */
+showView('loadingScreen');
+</script>
+</body>
+</html>
