@@ -914,6 +914,11 @@ $('btnEnviarReserva').onclick = async ()=>{
   if(ff<fi){ showToast('La fecha de fin no puede ser anterior al inicio'); return; }
   if(!motivo){ showToast('Indica el motivo de la reserva'); return; }
   if(cant > (art.cantidadDisponible ?? 0)){ showToast('No hay suficiente cantidad disponible'); return; }
+  const estadoLower = (art.estado||'').toLowerCase();
+  if(estadoLower.includes('mantenimiento') || estadoLower.includes('agotado') || estadoLower.includes('dañado') || estadoLower.includes('danado')){
+    showToast('Este artículo no está disponible para reservar ahora mismo');
+    return;
+  }
   $('btnEnviarReserva').disabled=true;
   try{
     await addDoc(collection(db,'reservas'), {
@@ -1066,12 +1071,14 @@ $('btnGuardarDevolucion').onclick = async ()=>{
     devolucion:{ fecha:$('devFecha').value, estadoMaterial:$('devEstado').value, observaciones:$('devObservaciones').value.trim() }
   });
   if(art){
-    const nuevaDisp=Math.min((art.cantidadTotal||0), (art.cantidadDisponible||0)+(r?.cantidad||1));
     const necesitaMantenimiento = ['revision','reparacion_menor','danado'].includes($('devEstado').value);
-    await updateDoc(doc(db,'articulos',art.id), {
-      cantidadDisponible:nuevaDisp,
-      estado: necesitaMantenimiento ? 'Mantenimiento' : 'Disponible'
-    });
+    if(necesitaMantenimiento){
+      // No se devuelve al stock disponible: la unidad queda retenida hasta que un admin la revise y la reactive a mano.
+      await updateDoc(doc(db,'articulos',art.id), { estado: 'Mantenimiento' });
+    }else{
+      const nuevaDisp=Math.min((art.cantidadTotal||0), (art.cantidadDisponible||0)+(r?.cantidad||1));
+      await updateDoc(doc(db,'articulos',art.id), { cantidadDisponible:nuevaDisp, estado: 'Disponible' });
+    }
   }
   await logGestion('completar_reserva', r?.articuloId||'', r?.articuloNombre||'', r?.cantidad||0, 'Devolución registrada');
   closeModals(); showToast('Devolución registrada');
