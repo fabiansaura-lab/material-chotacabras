@@ -809,8 +809,17 @@ function renderArticulos(){
     grid.appendChild(card);
   });
 }
+function articuloEstaDisponible(a){
+  const estadoLower = (a.estado||'').toLowerCase();
+  if((a.cantidadDisponible ?? 0) <= 0) return false;
+  if(estadoLower.includes('mantenimiento') || estadoLower.includes('agotado') || estadoLower.includes('dañado') || estadoLower.includes('danado')) return false;
+  return true;
+}
 function fillArticuloSelects(){
-  $('resArticulo').innerHTML = State.articulos.map(a=>`<option value="${a.id}">${a.nombre} (${a.cantidadDisponible ?? 0} disp.)</option>`).join('');
+  const disponibles = State.articulos.filter(articuloEstaDisponible);
+  $('resArticulo').innerHTML = disponibles.length
+    ? disponibles.map(a=>`<option value="${a.id}">${a.nombre} (${a.cantidadDisponible ?? 0} disp.)</option>`).join('')
+    : `<option value="">No hay artículos disponibles ahora mismo</option>`;
 }
 
 /* ---------------- Modal Artículo ---------------- */
@@ -839,6 +848,9 @@ function openArticuloModal(id){
       $('artCantTotal').value=a.cantidadTotal||0; $('artCantDisp').value=a.cantidadDisponible||0;
       $('artUbicacion').value=a.ubicacion||''; $('artDescripcion').value=a.descripcion||'';
       if(a.imagenUrl){ $('artImgPreview').style.backgroundImage=`url('${a.imagenUrl}')`; $('artImgPreview').textContent=''; artImagenUrlTmp=a.imagenUrl; }
+      const disponible = articuloEstaDisponible(a);
+      $('btnReservarDesdeDetalle').disabled = !disponible;
+      $('btnReservarDesdeDetalle').textContent = disponible ? 'Reservar' : 'No disponible ahora mismo';
     }
   }
   $('modalArticulo').classList.remove('hidden');
@@ -914,8 +926,7 @@ $('btnEnviarReserva').onclick = async ()=>{
   if(ff<fi){ showToast('La fecha de fin no puede ser anterior al inicio'); return; }
   if(!motivo){ showToast('Indica el motivo de la reserva'); return; }
   if(cant > (art.cantidadDisponible ?? 0)){ showToast('No hay suficiente cantidad disponible'); return; }
-  const estadoLower = (art.estado||'').toLowerCase();
-  if(estadoLower.includes('mantenimiento') || estadoLower.includes('agotado') || estadoLower.includes('dañado') || estadoLower.includes('danado')){
+  if(!articuloEstaDisponible(art)){
     showToast('Este artículo no está disponible para reservar ahora mismo');
     return;
   }
@@ -948,6 +959,11 @@ function renderReservas(){
   list.sort((a,b)=> (b.creado?.seconds||0) - (a.creado?.seconds||0));
   const tbody=document.querySelector('#tablaReservas tbody'); tbody.innerHTML='';
   $('reservasEmpty').classList.toggle('hidden', list.length>0);
+  // Detectar competencia: varias solicitudes pendientes para el mismo artículo
+  const pendientesPorArticulo = {};
+  State.reservas.filter(r=>r.estado==='pendiente').forEach(r=>{
+    (pendientesPorArticulo[r.articuloId] = pendientesPorArticulo[r.articuloId] || []).push(r);
+  });
   list.forEach(r=>{
     const pillClass=ESTADO_PILL[r.estado]||'pill-muted';
     const tr=document.createElement('tr');
@@ -966,9 +982,18 @@ function renderReservas(){
       acciones += `<button class="btn btn-small btn-outline-danger" data-delete-reserva="${r.id}">Eliminar</button>`;
     }
     const checkboxCell = State.isAdmin ? `<td><input type="checkbox" class="res-select" value="${r.id}" data-estado="${r.estado}"></td>` : '';
+    // Aviso de competencia por el mismo artículo (solo relevante para el admin, y solo en solicitudes pendientes)
+    let competenciaHtml = '';
+    if(State.isAdmin && r.estado==='pendiente'){
+      const otras = (pendientesPorArticulo[r.articuloId]||[]).filter(x=>x.id!==r.id);
+      if(otras.length>0){
+        const nombres = otras.map(o=>o.usuarioNombre).join(', ');
+        competenciaHtml = `<div class="helper" style="color:var(--amber-500);margin-top:3px;">⚠ También pedido por: ${nombres}</div>`;
+      }
+    }
     tr.innerHTML=`
       ${checkboxCell}
-      <td>${r.articuloNombre||''}</td>
+      <td>${r.articuloNombre||''}${competenciaHtml}</td>
       <td>${r.usuarioNombre||''}</td>
       <td class="mono">${fmtDate(r.fechaInicio)} → ${fmtDate(r.fechaFin)}</td>
       <td class="mono">${r.cantidad||1}</td>
