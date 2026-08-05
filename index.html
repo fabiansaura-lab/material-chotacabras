@@ -339,7 +339,7 @@ tr:last-child td{border-bottom:none;}
         <div class="kpi-card"><div class="num" id="kpiResDevuelto">0</div><div class="label">Material devuelto</div></div>
         <div class="kpi-card"><div class="num" id="kpiResTotal">0</div><div class="label">Total reservas</div></div>
       </div>
-      <div class="toolbar">
+      <div class="toolbar" id="reservasBulkBarWrap">
         <select id="filtroEstadoReserva">
           <option value="">Todos los estados</option>
           <option value="pendiente">Pendiente</option>
@@ -348,10 +348,15 @@ tr:last-child td{border-bottom:none;}
           <option value="completada">Completada</option>
           <option value="cancelada">Cancelada</option>
         </select>
+        <div class="spacer"></div>
+        <span id="resSelectedCount" class="helper hidden">0 seleccionadas</span>
+        <button class="btn btn-primary btn-small admin-only hidden" id="btnBulkApproveRes">Aprobar seleccionadas</button>
+        <button class="btn btn-ghost btn-small admin-only hidden" id="btnBulkRejectRes">Rechazar seleccionadas</button>
+        <button class="btn btn-outline-danger btn-small admin-only hidden" id="btnBulkDeleteRes">Eliminar seleccionadas</button>
       </div>
       <div class="table-wrap">
         <table id="tablaReservas">
-          <thead><tr><th>Artículo</th><th>Solicitante</th><th>Fechas</th><th>Cant.</th><th>Estado</th><th class="admin-only hidden">Acciones</th></tr></thead>
+          <thead><tr><th class="admin-only hidden" style="width:32px;"><input type="checkbox" id="resSelectAll"></th><th>Artículo</th><th>Solicitante</th><th>Fechas</th><th>Cant.</th><th>Estado</th><th class="admin-only hidden">Acciones</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -363,9 +368,14 @@ tr:last-child td{border-bottom:none;}
       <div class="section-head">
         <div><h2>Gestión de usuarios</h2><div class="section-sub">Administra las cuentas de acceso al sistema</div></div>
       </div>
+      <div class="toolbar hidden" id="usrBulkBar">
+        <span id="usrSelectedCount" class="helper">0 seleccionados</span>
+        <button class="btn btn-primary btn-small" id="btnBulkApproveUsr">Aprobar seleccionados</button>
+        <button class="btn btn-outline-danger btn-small" id="btnBulkDeleteUsr">Eliminar seleccionados</button>
+      </div>
       <div class="table-wrap">
         <table id="tablaUsuarios">
-          <thead><tr><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <thead><tr><th style="width:32px;"><input type="checkbox" id="usrSelectAll"></th><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -950,7 +960,9 @@ function renderReservas(){
     if(State.isAdmin){
       acciones += `<button class="btn btn-small btn-outline-danger" data-delete-reserva="${r.id}">Eliminar</button>`;
     }
+    const checkboxCell = State.isAdmin ? `<td><input type="checkbox" class="res-select" value="${r.id}" data-estado="${r.estado}"></td>` : '';
     tr.innerHTML=`
+      ${checkboxCell}
       <td>${r.articuloNombre||''}</td>
       <td>${r.usuarioNombre||''}</td>
       <td class="mono">${fmtDate(r.fechaInicio)} → ${fmtDate(r.fechaFin)}</td>
@@ -967,18 +979,57 @@ function renderReservas(){
     const id = b.dataset.deleteReserva;
     const r = State.reservas.find(x=>x.id===id);
     if(!confirm(`¿Eliminar esta reserva de "${r?.articuloNombre||''}" del listado? Esta acción no se puede deshacer.`)) return;
-    // Si estaba aprobada (material fuera), devolvemos la disponibilidad al eliminarla
-    if(r && r.estado==='aprobada'){
-      const art = State.articulos.find(a=>a.id===r.articuloId);
-      if(art){
-        const nuevaDisp = Math.min(art.cantidadTotal||0, (art.cantidadDisponible||0)+(r.cantidad||1));
-        await updateDoc(doc(db,'articulos',art.id), { cantidadDisponible:nuevaDisp, estado: nuevaDisp>0 ? 'Disponible' : art.estado });
-      }
-    }
-    await deleteDoc(doc(db,'reservas',id));
+    await eliminarReservaById(id);
     showToast('Reserva eliminada');
   });
+  tbody.querySelectorAll('.res-select').forEach(cb=>cb.addEventListener('change', updateResBulkBar));
+  if($('resSelectAll')) $('resSelectAll').checked=false;
+  updateResBulkBar();
 }
+
+async function eliminarReservaById(id){
+  const r = State.reservas.find(x=>x.id===id);
+  if(r && r.estado==='aprobada'){
+    const art = State.articulos.find(a=>a.id===r.articuloId);
+    if(art){
+      const nuevaDisp = Math.min(art.cantidadTotal||0, (art.cantidadDisponible||0)+(r.cantidad||1));
+      await updateDoc(doc(db,'articulos',art.id), { cantidadDisponible:nuevaDisp, estado: nuevaDisp>0 ? 'Disponible' : art.estado });
+    }
+  }
+  await deleteDoc(doc(db,'reservas',id));
+}
+function updateResBulkBar(){
+  const checked = Array.from(document.querySelectorAll('.res-select:checked'));
+  $('resSelectedCount').classList.toggle('hidden', checked.length===0 || !State.isAdmin);
+  $('resSelectedCount').textContent = `${checked.length} seleccionada${checked.length===1?'':'s'}`;
+}
+if($('resSelectAll')){
+  $('resSelectAll').onchange = (e)=>{
+    document.querySelectorAll('.res-select').forEach(cb=> cb.checked = e.target.checked);
+    updateResBulkBar();
+  };
+}
+$('btnBulkApproveRes').onclick = async ()=>{
+  const ids = Array.from(document.querySelectorAll('.res-select:checked')).map(cb=>cb.value);
+  if(ids.length===0) return;
+  if(!confirm(`¿Aprobar ${ids.length} reserva(s) seleccionada(s)?`)) return;
+  for(const id of ids){ await aprobarReserva(id); }
+  showToast('Reservas aprobadas');
+};
+$('btnBulkRejectRes').onclick = async ()=>{
+  const ids = Array.from(document.querySelectorAll('.res-select:checked')).map(cb=>cb.value);
+  if(ids.length===0) return;
+  if(!confirm(`¿Rechazar ${ids.length} reserva(s) seleccionada(s)?`)) return;
+  for(const id of ids){ await rechazarReserva(id); }
+  showToast('Reservas rechazadas');
+};
+$('btnBulkDeleteRes').onclick = async ()=>{
+  const ids = Array.from(document.querySelectorAll('.res-select:checked')).map(cb=>cb.value);
+  if(ids.length===0) return;
+  if(!confirm(`¿Eliminar ${ids.length} reserva(s) seleccionada(s) del listado? Esta acción no se puede deshacer.`)) return;
+  for(const id of ids){ await eliminarReservaById(id); }
+  showToast('Reservas eliminadas');
+};
 async function aprobarReserva(id){
   const r=State.reservas.find(x=>x.id===id); if(!r) return;
   const art=State.articulos.find(a=>a.id===r.articuloId);
@@ -1027,6 +1078,9 @@ $('btnGuardarDevolucion').onclick = async ()=>{
 };
 
 /* ---------------- Render: Usuarios ---------------- */
+async function eliminarUsuarioById(id){
+  await deleteDoc(doc(db,'usuarios',id));
+}
 function renderUsuarios(){
   const tbody=document.querySelector('#tablaUsuarios tbody'); tbody.innerHTML='';
   const list=[...State.usuarios].sort((a,b)=> (a.estado==='pendiente'?-1:1) - (b.estado==='pendiente'?-1:1));
@@ -1046,7 +1100,8 @@ function renderUsuarios(){
       acciones+=`<button class="btn btn-small btn-ghost" data-makeadmin="${u.id}">Hacer admin</button>`;
     }
     acciones+=`<button class="btn btn-small btn-outline-danger" data-delete-user="${u.id}">Eliminar</button>`;
-    tr.innerHTML=`<td>${u.nombre||''}</td><td>${u.email||''}</td><td>${u.telefono||''}</td>
+    tr.innerHTML=`<td><input type="checkbox" class="usr-select" value="${u.id}" data-estado="${u.estado}"></td>
+      <td>${u.nombre||''}</td><td>${u.email||''}</td><td>${u.telefono||''}</td>
       <td>${u.rol==='administrador'?'👑 Admin':'👤 Socio'}</td>
       <td><span class="pill ${pillClass}">${u.estado}</span></td>
       <td class="actions-cell">${acciones}</td>`;
@@ -1058,9 +1113,35 @@ function renderUsuarios(){
   tbody.querySelectorAll('[data-makeadmin]').forEach(b=>b.onclick=()=>{ if(confirm('¿Convertir en administrador?')) updateDoc(doc(db,'usuarios',b.dataset.makeadmin),{rol:'administrador'}).then(()=>showToast('Ahora es administrador')); });
   tbody.querySelectorAll('[data-delete-user]').forEach(b=>b.onclick=()=>{
     if(!confirm('¿Eliminar este usuario de la lista? Esto no borra su cuenta de acceso (correo/contraseña), solo su registro en el sistema. Si vuelve a entrar, aparecerá de nuevo como pendiente.')) return;
-    deleteDoc(doc(db,'usuarios',b.dataset.deleteUser)).then(()=>showToast('Usuario eliminado del listado'));
+    eliminarUsuarioById(b.dataset.deleteUser).then(()=>showToast('Usuario eliminado del listado'));
   });
+  tbody.querySelectorAll('.usr-select').forEach(cb=>cb.addEventListener('change', updateUsrBulkBar));
+  $('usrSelectAll').checked=false;
+  updateUsrBulkBar();
 }
+function updateUsrBulkBar(){
+  const checked = Array.from(document.querySelectorAll('.usr-select:checked'));
+  $('usrBulkBar').classList.toggle('hidden', checked.length===0);
+  $('usrSelectedCount').textContent = `${checked.length} seleccionado${checked.length===1?'':'s'}`;
+}
+$('usrSelectAll').onchange = (e)=>{
+  document.querySelectorAll('.usr-select').forEach(cb=> cb.checked = e.target.checked);
+  updateUsrBulkBar();
+};
+$('btnBulkApproveUsr').onclick = async ()=>{
+  const ids = Array.from(document.querySelectorAll('.usr-select:checked')).map(cb=>cb.value);
+  if(ids.length===0) return;
+  if(!confirm(`¿Aprobar ${ids.length} usuario(s) seleccionado(s)?`)) return;
+  for(const id of ids){ await updateDoc(doc(db,'usuarios',id), {estado:'activo'}); }
+  showToast('Usuarios aprobados');
+};
+$('btnBulkDeleteUsr').onclick = async ()=>{
+  const ids = Array.from(document.querySelectorAll('.usr-select:checked')).map(cb=>cb.value);
+  if(ids.length===0) return;
+  if(!confirm(`¿Eliminar ${ids.length} usuario(s) seleccionado(s) de la lista? Esto no borra sus cuentas de acceso, solo su registro en el sistema.`)) return;
+  for(const id of ids){ await eliminarUsuarioById(id); }
+  showToast('Usuarios eliminados del listado');
+};
 
 /* ---------------- Configuración: categorías / estados ---------------- */
 function renderCategoriasConfig(){
