@@ -9,6 +9,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 
+<!-- Avisos por correo -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+
 <!-- Reportes -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
@@ -309,10 +312,10 @@ tr:last-child td{border-bottom:none;}
         <button class="btn btn-primary admin-only hidden" id="btnAddArticulo">+ Agregar artículo</button>
       </div>
       <div class="kpi-row">
-        <div class="kpi-card"><div class="num" id="kpiTotal">0</div><div class="label">Total artículos</div></div>
-        <div class="kpi-card"><div class="num" id="kpiDisponibles">0</div><div class="label">Disponibles</div></div>
-        <div class="kpi-card"><div class="num" id="kpiPrestados">0</div><div class="label">Prestados</div></div>
-        <div class="kpi-card"><div class="num" id="kpiMantenimiento">0</div><div class="label">En mantenimiento</div></div>
+        <div class="kpi-card" id="kpiCardTotal" style="cursor:pointer;"><div class="num" id="kpiTotal">0</div><div class="label">Total artículos</div></div>
+        <div class="kpi-card" id="kpiCardDisponibles" style="cursor:pointer;"><div class="num" id="kpiDisponibles">0</div><div class="label">Disponibles</div></div>
+        <div class="kpi-card" id="kpiCardPrestados" style="cursor:pointer;"><div class="num" id="kpiPrestados">0</div><div class="label">Prestados</div></div>
+        <div class="kpi-card" id="kpiCardMantenimiento" style="cursor:pointer;"><div class="num" id="kpiMantenimiento">0</div><div class="label">En mantenimiento</div></div>
       </div>
       <div class="toolbar">
         <select id="filtroCategoria"><option value="">Todas las categorías</option></select>
@@ -540,6 +543,23 @@ const db = getFirestore(fbApp);
 const CLOUDINARY_CLOUD = "p8ou7hmr";
 const CLOUDINARY_PRESET = "club_chotacabras";
 
+/* ---------------- Avisos por correo (EmailJS) ---------------- */
+/* Rellena estos 4 valores cuando tengas tu cuenta de EmailJS creada.
+   Mientras estén vacíos, los avisos simplemente no se envían (sin romper nada). */
+const EMAILJS_PUBLIC_KEY  = "";   // Account → General → Public Key
+const EMAILJS_SERVICE_ID  = "";   // Email Services → tu servicio (ej. Gmail)
+const EMAILJS_TEMPLATE_ID = "";   // Email Templates → tu plantilla
+const CLUB_EMAIL = "club.chotacabras@gmail.com"; // correo del club que recibe los avisos
+
+if(EMAILJS_PUBLIC_KEY && window.emailjs){ window.emailjs.init(EMAILJS_PUBLIC_KEY); }
+
+function enviarAvisoEmail(asunto, mensaje){
+  if(!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !window.emailjs) return;
+  window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+    to_email: CLUB_EMAIL, subject: asunto, message: mensaje
+  }).catch(()=>{ /* si falla el aviso, no interrumpimos el flujo normal de la app */ });
+}
+
 /* ---------------- Estado global ---------------- */
 const State = {
   user:null, userDoc:null, isAdmin:false,
@@ -621,6 +641,10 @@ $('btnRegister').onclick = async ()=>{
     await setDoc(doc(db,'usuarios',cred.user.uid), {
       nombre, email, telefono, rol:'usuario', estado:'pendiente', creado: serverTimestamp()
     });
+    enviarAvisoEmail(
+      'Nueva solicitud de acceso — Club Chotacabras',
+      `${nombre} (${email}${telefono ? ', tel. '+telefono : ''}) ha solicitado acceso al sistema de material del club. Entra en la app, pestaña "Usuarios", para aprobar o rechazar la solicitud.`
+    );
   }catch(e){
     $('registerError').textContent = e.code==='auth/email-already-in-use' ? 'Ese correo ya está registrado.' : 'No se pudo crear la cuenta.';
     $('registerError').classList.remove('hidden');
@@ -730,6 +754,19 @@ function fillFiltros(){
 }
 ['filtroCategoria','filtroEstadoArt','buscarArticulo'].forEach(id=>$(id).addEventListener('input', renderArticulos));
 $('filtroEstadoReserva').addEventListener('change', renderReservas);
+
+/* Tarjetas KPI clicables como atajos de filtro */
+function setEstadoFiltroByKeyword(keyword){
+  const opt = Array.from($('filtroEstadoArt').options).find(o=> o.value.toLowerCase().includes(keyword));
+  $('filtroEstadoArt').value = opt ? opt.value : '';
+  $('filtroCategoria').value=''; $('buscarArticulo').value='';
+  renderArticulos();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+$('kpiCardTotal').onclick=()=>{ $('filtroEstadoArt').value=''; $('filtroCategoria').value=''; $('buscarArticulo').value=''; renderArticulos(); };
+$('kpiCardDisponibles').onclick=()=>setEstadoFiltroByKeyword('disponible');
+$('kpiCardPrestados').onclick=()=>setEstadoFiltroByKeyword('prestado');
+$('kpiCardMantenimiento').onclick=()=>setEstadoFiltroByKeyword('mantenimiento');
 
 /* ---------------- Render: Inventario ---------------- */
 function renderKpisInventario(){
@@ -874,6 +911,10 @@ $('btnEnviarReserva').onclick = async ()=>{
       usuarioId:State.user.uid, usuarioNombre:State.userDoc.nombre, email:State.userDoc.email, telefono:State.userDoc.telefono||'',
       fechaInicio:fi, fechaFin:ff, cantidad:cant, motivo, estado:'pendiente', creado:serverTimestamp()
     });
+    enviarAvisoEmail(
+      'Nueva solicitud de reserva — Club Chotacabras',
+      `${State.userDoc.nombre} ha solicitado reservar "${art.nombre}" (${cant} ud.) del ${fi} al ${ff}. Motivo: ${motivo}. Entra en la app, pestaña "Reservas", para aprobarla o rechazarla.`
+    );
     closeModals(); showToast('Solicitud de reserva enviada');
   }catch(e){ showToast('No se pudo enviar la solicitud'); }
   $('btnEnviarReserva').disabled=false;
