@@ -390,7 +390,16 @@ tr:last-child td{border-bottom:none;}
         <table id="tablaEstados"><thead><tr><th>Nombre</th><th>Acciones</th></tr></thead><tbody></tbody></table>
       </div>
 
-      <h3 style="font-size:16px;color:var(--pine-900);">Generación de reportes</h3>
+      <h3 style="font-size:16px;color:var(--pine-900);">Importar catálogo desde Excel</h3>
+      <div class="section-sub" style="margin-bottom:10px;">Sube el archivo <code>manifest.json</code> y, a continuación, selecciona TODAS las imágenes de la carpeta (puedes seleccionarlas todas a la vez). El proceso creará los artículos como "Disponible" y subirá cada foto a Cloudinary automáticamente.</div>
+      <div class="field-row">
+        <div class="field"><label>Archivo manifest.json</label><input type="file" id="importManifestFile" accept=".json"></div>
+        <div class="field"><label>Imágenes (selecciona todas)</label><input type="file" id="importImagesFiles" accept="image/*" multiple></div>
+      </div>
+      <button class="btn btn-primary" id="btnImportarCatalogo">Importar catálogo</button>
+      <div id="importProgress" class="helper" style="margin-top:10px;"></div>
+
+      <h3 style="font-size:16px;color:var(--pine-900);margin-top:30px;">Generación de reportes</h3>
       <div class="report-grid">
         <div class="report-card">
           <h4>Inventario completo</h4><p>Lista de todos los artículos del club</p>
@@ -1015,6 +1024,66 @@ $('btnAddCategoria').onclick=async()=>{
 $('btnAddEstado').onclick=async()=>{
   const n=$('nuevoEstadoNombre').value.trim(); if(!n) return;
   await addDoc(collection(db,'estados'),{nombre:n, activo:true}); $('nuevoEstadoNombre').value='';
+};
+
+/* ---------------- Importador de catálogo desde Excel ---------------- */
+$('btnImportarCatalogo').onclick = async ()=>{
+  const manifestFile = $('importManifestFile').files[0];
+  const imageFiles = Array.from($('importImagesFiles').files);
+  const progressEl = $('importProgress');
+  if(!manifestFile){ showToast('Selecciona primero el archivo manifest.json'); return; }
+  let items;
+  try{
+    const text = await manifestFile.text();
+    items = JSON.parse(text);
+  }catch(e){ showToast('El manifest.json no es válido'); return; }
+  if(!Array.isArray(items) || items.length===0){ showToast('El manifest.json está vacío'); return; }
+  if(!confirm(`Se importarán ${items.length} artículos como "Disponible". ¿Continuar?`)) return;
+
+  // Mapa nombre de archivo -> File
+  const fileMap = {};
+  imageFiles.forEach(f=> fileMap[f.name.toLowerCase()] = f);
+
+  $('btnImportarCatalogo').disabled = true;
+  const catCache = {}; // nombre categoria -> existe
+  State.categorias.forEach(c=> catCache[c.nombre.toLowerCase()] = true);
+
+  let ok=0, fallidos=0, sinFoto=0;
+  for(let i=0;i<items.length;i++){
+    const it = items[i];
+    progressEl.textContent = `Importando ${i+1}/${items.length}: ${it.nombre}…`;
+    try{
+      // Asegurar que la categoría existe
+      const catKey = (it.categoria||'').toLowerCase();
+      if(catKey && !catCache[catKey]){
+        await addDoc(collection(db,'categorias'), {nombre:it.categoria, activa:true});
+        catCache[catKey]=true;
+      }
+      // Subir imagen si existe
+      let imagenUrl='';
+      if(it.imagen){
+        const file = fileMap[it.imagen.toLowerCase()];
+        if(file){
+          imagenUrl = await uploadToCloudinary(file);
+        }else{
+          sinFoto++;
+        }
+      }else{
+        sinFoto++;
+      }
+      await addDoc(collection(db,'articulos'), {
+        nombre: it.nombre, categoria: it.categoria||'', estado:'Disponible',
+        marca:'', talla:'', cantidadTotal:1, cantidadDisponible:1,
+        ubicacion:'', descripcion:'', imagenUrl, creado:serverTimestamp()
+      });
+      ok++;
+    }catch(e){
+      fallidos++;
+    }
+  }
+  progressEl.textContent = `Importación completada: ${ok} artículos creados, ${fallidos} con error, ${sinFoto} sin foto asignada.`;
+  $('btnImportarCatalogo').disabled = false;
+  showToast('Importación de catálogo finalizada');
 };
 
 /* ---------------- Registro de gestiones ---------------- */
