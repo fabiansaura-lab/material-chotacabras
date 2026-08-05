@@ -947,6 +947,9 @@ function renderReservas(){
     } else if(r.usuarioId===State.user.uid && r.estado==='pendiente'){
       acciones=`<button class="btn btn-small btn-outline-danger" data-cancel="${r.id}">Cancelar</button>`;
     }
+    if(State.isAdmin){
+      acciones += `<button class="btn btn-small btn-outline-danger" data-delete-reserva="${r.id}">Eliminar</button>`;
+    }
     tr.innerHTML=`
       <td>${r.articuloNombre||''}</td>
       <td>${r.usuarioNombre||''}</td>
@@ -960,6 +963,21 @@ function renderReservas(){
   tbody.querySelectorAll('[data-reject]').forEach(b=>b.onclick=()=>rechazarReserva(b.dataset.reject));
   tbody.querySelectorAll('[data-cancel]').forEach(b=>b.onclick=()=>cancelarReserva(b.dataset.cancel));
   tbody.querySelectorAll('[data-return]').forEach(b=>b.onclick=()=>openDevolucionModal(b.dataset.return));
+  tbody.querySelectorAll('[data-delete-reserva]').forEach(b=>b.onclick=async ()=>{
+    const id = b.dataset.deleteReserva;
+    const r = State.reservas.find(x=>x.id===id);
+    if(!confirm(`¿Eliminar esta reserva de "${r?.articuloNombre||''}" del listado? Esta acción no se puede deshacer.`)) return;
+    // Si estaba aprobada (material fuera), devolvemos la disponibilidad al eliminarla
+    if(r && r.estado==='aprobada'){
+      const art = State.articulos.find(a=>a.id===r.articuloId);
+      if(art){
+        const nuevaDisp = Math.min(art.cantidadTotal||0, (art.cantidadDisponible||0)+(r.cantidad||1));
+        await updateDoc(doc(db,'articulos',art.id), { cantidadDisponible:nuevaDisp, estado: nuevaDisp>0 ? 'Disponible' : art.estado });
+      }
+    }
+    await deleteDoc(doc(db,'reservas',id));
+    showToast('Reserva eliminada');
+  });
 }
 async function aprobarReserva(id){
   const r=State.reservas.find(x=>x.id===id); if(!r) return;
@@ -1027,6 +1045,7 @@ function renderUsuarios(){
     if(u.rol!=='administrador'){
       acciones+=`<button class="btn btn-small btn-ghost" data-makeadmin="${u.id}">Hacer admin</button>`;
     }
+    acciones+=`<button class="btn btn-small btn-outline-danger" data-delete-user="${u.id}">Eliminar</button>`;
     tr.innerHTML=`<td>${u.nombre||''}</td><td>${u.email||''}</td><td>${u.telefono||''}</td>
       <td>${u.rol==='administrador'?'👑 Admin':'👤 Socio'}</td>
       <td><span class="pill ${pillClass}">${u.estado}</span></td>
@@ -1037,6 +1056,10 @@ function renderUsuarios(){
   tbody.querySelectorAll('[data-deactivate-user]').forEach(b=>b.onclick=()=>{ if(confirm('¿Desactivar este usuario?')) updateDoc(doc(db,'usuarios',b.dataset.deactivateUser),{estado:'inactivo'}).then(()=>showToast('Usuario desactivado')); });
   tbody.querySelectorAll('[data-activate-user]').forEach(b=>b.onclick=()=>updateDoc(doc(db,'usuarios',b.dataset.activateUser),{estado:'activo'}).then(()=>showToast('Usuario reactivado')));
   tbody.querySelectorAll('[data-makeadmin]').forEach(b=>b.onclick=()=>{ if(confirm('¿Convertir en administrador?')) updateDoc(doc(db,'usuarios',b.dataset.makeadmin),{rol:'administrador'}).then(()=>showToast('Ahora es administrador')); });
+  tbody.querySelectorAll('[data-delete-user]').forEach(b=>b.onclick=()=>{
+    if(!confirm('¿Eliminar este usuario de la lista? Esto no borra su cuenta de acceso (correo/contraseña), solo su registro en el sistema. Si vuelve a entrar, aparecerá de nuevo como pendiente.')) return;
+    deleteDoc(doc(db,'usuarios',b.dataset.deleteUser)).then(()=>showToast('Usuario eliminado del listado'));
+  });
 }
 
 /* ---------------- Configuración: categorías / estados ---------------- */
