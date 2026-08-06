@@ -732,6 +732,24 @@ onAuthStateChanged(auth, async (user)=>{
   setupListeners();
 });
 
+let vencidasYaComprobadas = false;
+/* Aviso diario al admin si hay devoluciones vencidas, al entrar en la app */
+function comprobarDevolucionesVencidas(){
+  if(vencidasYaComprobadas) return;
+  vencidasYaComprobadas = true;
+  const hoy = todayStr();
+  const yaAvisadoHoy = localStorage.getItem('avisoVencidasFecha') === hoy;
+  if(yaAvisadoHoy) return;
+  const vencidas = State.reservas.filter(reservaVencida);
+  if(vencidas.length===0) return;
+  const detalle = vencidas.map(r=>`- "${r.articuloNombre}" — ${r.usuarioNombre} (debía devolverse el ${r.fechaFin})`).join('\n');
+  enviarAvisoEmail(
+    `${vencidas.length} devolución(es) vencida(s) — Club Chotacabras`,
+    `Hay material que debería haberse devuelto y sigue sin registrarse la devolución:\n\n${detalle}\n\nEntra en la app, pestaña "Reservas", para gestionarlo.`
+  );
+  localStorage.setItem('avisoVencidasFecha', hoy);
+}
+
 /* ---------------- Categorías / Estados por defecto ---------------- */
 async function ensureDefaults(){
   const catSnap = await getDocs(collection(db,'categorias'));
@@ -759,6 +777,7 @@ function setupListeners(){
     unsubs.push(onSnapshot(collection(db,'reservas'), snap=>{
       State.reservas = snap.docs.map(d=>({id:d.id,...d.data()}));
       renderReservas(); renderKpisReservas(); updateBadges();
+      comprobarDevolucionesVencidas();
     }));
   }else{
     // Dos fuentes combinadas: mi propio historial completo + las solicitudes activas de todo el club
