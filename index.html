@@ -527,6 +527,22 @@ tr:last-child td{border-bottom:none;}
   </div>
 </div>
 
+<!-- Editar usuario (admin) -->
+<div id="modalEditarUsuario" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-head"><h3>Editar usuario</h3><button class="modal-close" data-close>&times;</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Nombre completo</label><input type="text" id="eduNombre"></div>
+      <div class="field"><label>Teléfono</label><input type="tel" id="eduTelefono"></div>
+      <div class="helper">El correo electrónico no se puede cambiar desde aquí (es la cuenta de acceso).</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" data-close>Cancelar</button>
+      <button class="btn btn-primary" id="btnGuardarEditarUsuario">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast" class="toast"></div>
 
 <!-- ===================== FIREBASE ===================== -->
@@ -1043,9 +1059,10 @@ function renderReservas(){
         competenciaHtml = `<div class="helper" style="color:var(--amber-500);margin-top:3px;">⏳ En lista de espera — hay otra solicitud para fechas similares</div>`;
       }
     }
+    const solicitanteInline = State.isAdmin ? `<div class="helper" style="margin-top:2px;">Pedido por: ${r.usuarioNombre||''}</div>` : '';
     tr.innerHTML=`
       ${checkboxCell}
-      <td>${r.articuloNombre||''}${competenciaHtml}</td>
+      <td>${r.articuloNombre||''}${solicitanteInline}${competenciaHtml}</td>
       <td>${r.usuarioNombre||''}</td>
       <td class="mono">${fmtDate(r.fechaInicio)} → ${fmtDate(r.fechaFin)}</td>
       <td class="mono">${r.cantidad||1}</td>
@@ -1184,6 +1201,7 @@ function renderUsuarios(){
       acciones+=`<button class="btn btn-small btn-ghost" data-makeadmin="${u.id}">Hacer admin</button>`;
     }
     acciones+=`<button class="btn btn-small btn-outline-danger" data-delete-user="${u.id}">Eliminar</button>`;
+    acciones+=`<button class="btn btn-small btn-ghost" data-edit-user="${u.id}">Editar</button>`;
     tr.innerHTML=`<td><input type="checkbox" class="usr-select" value="${u.id}" data-estado="${u.estado}"></td>
       <td>${u.nombre||''}</td><td>${u.email||''}</td><td>${u.telefono||''}</td>
       <td>${u.rol==='administrador'?'👑 Admin':'👤 Socio'}</td>
@@ -1199,6 +1217,7 @@ function renderUsuarios(){
     if(!confirm('¿Eliminar este usuario de la lista? Esto no borra su cuenta de acceso (correo/contraseña), solo su registro en el sistema. Si vuelve a entrar, aparecerá de nuevo como pendiente.')) return;
     eliminarUsuarioById(b.dataset.deleteUser).then(()=>showToast('Usuario eliminado del listado'));
   });
+  tbody.querySelectorAll('[data-edit-user]').forEach(b=>b.onclick=()=>openEditarUsuarioModal(b.dataset.editUser));
   tbody.querySelectorAll('.usr-select').forEach(cb=>cb.addEventListener('change', updateUsrBulkBar));
   $('usrSelectAll').checked=false;
   updateUsrBulkBar();
@@ -1225,6 +1244,26 @@ $('btnBulkDeleteUsr').onclick = async ()=>{
   if(!confirm(`¿Eliminar ${ids.length} usuario(s) seleccionado(s) de la lista? Esto no borra sus cuentas de acceso, solo su registro en el sistema.`)) return;
   for(const id of ids){ await eliminarUsuarioById(id); }
   showToast('Usuarios eliminados del listado');
+};
+
+/* ---------------- Editar usuario (admin) ---------------- */
+let editandoUsuarioId = null;
+function openEditarUsuarioModal(id){
+  const u = State.usuarios.find(x=>x.id===id);
+  if(!u) return;
+  editandoUsuarioId = id;
+  $('eduNombre').value = u.nombre||'';
+  $('eduTelefono').value = u.telefono||'';
+  $('modalEditarUsuario').classList.remove('hidden');
+}
+$('btnGuardarEditarUsuario').onclick = async ()=>{
+  if(!editandoUsuarioId) return;
+  const nombre = $('eduNombre').value.trim();
+  if(!nombre){ showToast('El nombre no puede quedar vacío'); return; }
+  try{
+    await updateDoc(doc(db,'usuarios',editandoUsuarioId), { nombre, telefono: $('eduTelefono').value.trim() });
+    closeModals(); showToast('Usuario actualizado');
+  }catch(e){ showToast('No se pudo actualizar el usuario'); }
 };
 
 /* ---------------- Configuración: categorías / estados ---------------- */
