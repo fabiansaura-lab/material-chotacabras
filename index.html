@@ -931,6 +931,17 @@ function openReservaModal(articuloId){
   if(articuloId) $('resArticulo').value=articuloId;
   $('modalReserva').classList.remove('hidden');
 }
+function fechasSolapan(fi1, ff1, fi2, ff2){
+  return !(ff1 < fi2 || fi1 > ff2);
+}
+function solicitudesQueSolapan(articuloId, fi, ff, excludeId){
+  return State.reservas.filter(r =>
+    r.articuloId===articuloId &&
+    r.id!==excludeId &&
+    ['pendiente','aprobada'].includes(r.estado) &&
+    fechasSolapan(r.fechaInicio, r.fechaFin, fi, ff)
+  );
+}
 $('btnNuevaReserva').onclick=()=>openReservaModal(null);
 $('btnEnviarReserva').onclick = async ()=>{
   const artId=$('resArticulo').value;
@@ -940,23 +951,31 @@ $('btnEnviarReserva').onclick = async ()=>{
   if(!fi||!ff){ showToast('Indica las fechas'); return; }
   if(ff<fi){ showToast('La fecha de fin no puede ser anterior al inicio'); return; }
   if(!motivo){ showToast('Indica el motivo de la reserva'); return; }
-  if(cant > (art.cantidadDisponible ?? 0)){ showToast('No hay suficiente cantidad disponible'); return; }
+  if(cant > (art.cantidadTotal ?? 0)){ showToast('El club no tiene tantas unidades de este artículo'); return; }
   if(!articuloEstaDisponible(art)){
     showToast('Este artículo no está disponible para reservar ahora mismo');
     return;
+  }
+  const conflictos = solicitudesQueSolapan(artId, fi, ff);
+  let enEspera = false;
+  if(conflictos.length>0){
+    const nombres = [...new Set(conflictos.map(c=>c.usuarioNombre))].join(', ');
+    const seguir = confirm(`"${art.nombre}" ya tiene una solicitud de ${nombres} para fechas que coinciden con las tuyas.\n\nTu solicitud quedará en LISTA DE ESPERA: un administrador decidirá a quién se le asigna finalmente, por si la otra persona no llega a recogerlo.\n\n¿Quieres enviarla de todas formas?`);
+    if(!seguir) return;
+    enEspera = true;
   }
   $('btnEnviarReserva').disabled=true;
   try{
     await addDoc(collection(db,'reservas'), {
       articuloId:artId, articuloNombre:art.nombre,
       usuarioId:State.user.uid, usuarioNombre:State.userDoc.nombre, email:State.userDoc.email, telefono:State.userDoc.telefono||'',
-      fechaInicio:fi, fechaFin:ff, cantidad:cant, motivo, estado:'pendiente', creado:serverTimestamp()
+      fechaInicio:fi, fechaFin:ff, cantidad:cant, motivo, estado:'pendiente', enEspera, creado:serverTimestamp()
     });
     enviarAvisoEmail(
-      'Nueva solicitud de reserva — Club Chotacabras',
-      `${State.userDoc.nombre} ha solicitado reservar "${art.nombre}" (${cant} ud.) del ${fi} al ${ff}. Motivo: ${motivo}. Entra en la app, pestaña "Reservas", para aprobarla o rechazarla.`
+      enEspera ? 'Nueva solicitud EN LISTA DE ESPERA — Club Chotacabras' : 'Nueva solicitud de reserva — Club Chotacabras',
+      `${State.userDoc.nombre} ha solicitado reservar "${art.nombre}" (${cant} ud.) del ${fi} al ${ff}. Motivo: ${motivo}.${enEspera ? ' ⚠ Hay otra(s) solicitud(es) con fechas que se cruzan — decide a quién se le asigna.' : ''} Entra en la app, pestaña "Reservas", para aprobarla o rechazarla.`
     );
-    closeModals(); showToast('Solicitud de reserva enviada');
+    closeModals(); showToast(enEspera ? 'Solicitud enviada en lista de espera' : 'Solicitud de reserva enviada');
   }catch(e){ showToast('No se pudo enviar la solicitud'); }
   $('btnEnviarReserva').disabled=false;
 };
@@ -977,11 +996,6 @@ function renderReservas(){
   $('reservasSubtitle').textContent = State.isAdmin ? 'Solicitudes de todos los socios' : 'Tu historial de solicitudes';
   const tbody=document.querySelector('#tablaReservas tbody'); tbody.innerHTML='';
   $('reservasEmpty').classList.toggle('hidden', list.length>0);
-  // Detectar competencia: varias solicitudes pendientes para el mismo artículo
-  const pendientesPorArticulo = {};
-  State.reservas.filter(r=>r.estado==='pendiente').forEach(r=>{
-    (pendientesPorArticulo[r.articuloId] = pendientesPorArticulo[r.articuloId] || []).push(r);
-  });
   list.forEach(r=>{
     const pillClass=ESTADO_PILL[r.estado]||'pill-muted';
     const tr=document.createElement('tr');
@@ -1000,13 +1014,15 @@ function renderReservas(){
       acciones += `<button class="btn btn-small btn-outline-danger" data-delete-reserva="${r.id}">Eliminar</button>`;
     }
     const checkboxCell = State.isAdmin ? `<td><input type="checkbox" class="res-select" value="${r.id}" data-estado="${r.estado}"></td>` : '';
-    // Aviso de competencia por el mismo artículo (solo relevante para el admin, y solo en solicitudes pendientes)
+    // Aviso de solapamiento de fechas con otra solicitud del mismo artículo
     let competenciaHtml = '';
-    if(State.isAdmin && r.estado==='pendiente'){
-      const otras = (pendientesPorArticulo[r.articuloId]||[]).filter(x=>x.id!==r.id);
-      if(otras.length>0){
-        const nombres = otras.map(o=>o.usuarioNombre).join(', ');
-        competenciaHtml = `<div class="helper" style="color:var(--amber-500);margin-top:3px;">⚠ También pedido por: ${nombres}</div>`;
+    if(r.estado==='pendiente'){
+      const otras = solicitudesQueSolapan(r.articuloId, r.fechaInicio, r.fechaFin, r.id);
+      if(State.isAdmin && otras.length>0){
+        const nombres = [...new Set(otras.map(o=>o.usuarioNombre))].join(', ');
+        competenciaHtml = `<div class="helper" style="color:var(--amber-500);margin-top:3px;">⚠ Fechas cruzadas con: ${nombres}</div>`;
+      } else if(!State.isAdmin && r.enEspera){
+        competenciaHtml = `<div class="helper" style="color:var(--amber-500);margin-top:3px;">⏳ En lista de espera — hay otra solicitud para fechas similares</div>`;
       }
     }
     tr.innerHTML=`
