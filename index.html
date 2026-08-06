@@ -715,13 +715,28 @@ function setupListeners(){
     State.articulos = snap.docs.map(d=>({id:d.id,...d.data()}));
     renderArticulos(); renderKpisInventario(); fillArticuloSelects();
   }));
-  unsubs.push(onSnapshot(
-    State.isAdmin ? collection(db,'reservas') : query(collection(db,'reservas'), where('usuarioId','==',State.user.uid)),
-    snap=>{
+  if(State.isAdmin){
+    unsubs.push(onSnapshot(collection(db,'reservas'), snap=>{
       State.reservas = snap.docs.map(d=>({id:d.id,...d.data()}));
       renderReservas(); renderKpisReservas(); updateBadges();
-    }
-  ));
+    }));
+  }else{
+    // Dos fuentes combinadas: mi propio historial completo + las solicitudes activas de todo el club
+    // (esto último solo se usa para detectar cruces de fechas, la tabla solo muestra las mías).
+    let propias = {}, activasClub = {};
+    const refrescarReservas = ()=>{
+      State.reservas = Object.values({...activasClub, ...propias});
+      renderReservas(); renderKpisReservas(); updateBadges();
+    };
+    unsubs.push(onSnapshot(query(collection(db,'reservas'), where('usuarioId','==',State.user.uid)), snap=>{
+      propias = {}; snap.docs.forEach(d=> propias[d.id]={id:d.id,...d.data()});
+      refrescarReservas();
+    }));
+    unsubs.push(onSnapshot(query(collection(db,'reservas'), where('estado','in',['pendiente','aprobada'])), snap=>{
+      activasClub = {}; snap.docs.forEach(d=> activasClub[d.id]={id:d.id,...d.data()});
+      refrescarReservas();
+    }));
+  }
   unsubs.push(onSnapshot(collection(db,'usuarios'), snap=>{
     State.usuarios = snap.docs.map(d=>({id:d.id,...d.data()}));
     renderUsuarios(); updateBadges(); fillFiltroSocios();
@@ -737,7 +752,8 @@ function setupListeners(){
 }
 
 function updateBadges(){
-  const pendRes = State.reservas.filter(r=>r.estado==='pendiente').length;
+  const misReservas = State.isAdmin ? State.reservas : State.reservas.filter(r=>r.usuarioId===State.user.uid);
+  const pendRes = misReservas.filter(r=>r.estado==='pendiente').length;
   const pendUsr = State.usuarios.filter(u=>u.estado==='pendiente').length;
   $('badgeReservasPend').textContent=pendRes; $('badgeReservasPend').classList.toggle('hidden', pendRes===0);
   $('badgeUsuariosPend').textContent=pendUsr; $('badgeUsuariosPend').classList.toggle('hidden', pendUsr===0);
@@ -982,15 +998,17 @@ $('btnEnviarReserva').onclick = async ()=>{
 
 /* ---------------- Render: Reservas ---------------- */
 function renderKpisReservas(){
-  $('kpiResPend').textContent=State.reservas.filter(r=>r.estado==='pendiente').length;
-  $('kpiResAprob').textContent=State.reservas.filter(r=>r.estado==='aprobada').length;
-  $('kpiResDevuelto').textContent=State.reservas.filter(r=>r.estado==='completada').length;
-  $('kpiResTotal').textContent=State.reservas.length;
+  const propias = State.isAdmin ? State.reservas : State.reservas.filter(r=>r.usuarioId===State.user.uid);
+  $('kpiResPend').textContent=propias.filter(r=>r.estado==='pendiente').length;
+  $('kpiResAprob').textContent=propias.filter(r=>r.estado==='aprobada').length;
+  $('kpiResDevuelto').textContent=propias.filter(r=>r.estado==='completada').length;
+  $('kpiResTotal').textContent=propias.length;
 }
 function renderReservas(){
   const filtro=$('filtroEstadoReserva').value;
   const socioFiltro = State.isAdmin ? $('filtroSocioReserva').value : '';
-  let list=State.reservas.filter(r=> !filtro || r.estado===filtro);
+  let list = State.isAdmin ? State.reservas.slice() : State.reservas.filter(r=>r.usuarioId===State.user.uid);
+  list = list.filter(r=> !filtro || r.estado===filtro);
   if(socioFiltro) list = list.filter(r=> r.usuarioId===socioFiltro);
   list.sort((a,b)=> (b.creado?.seconds||0) - (a.creado?.seconds||0));
   $('reservasSubtitle').textContent = State.isAdmin ? 'Solicitudes de todos los socios' : 'Tu historial de solicitudes';
