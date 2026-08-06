@@ -301,6 +301,7 @@ tr:last-child td{border-bottom:none;}
     <button class="tab-btn active" data-tab="inventario">Inventario</button>
     <button class="tab-btn" data-tab="reservas">Reservas <span class="badge-count hidden" id="badgeReservasPend">0</span></button>
     <button class="tab-btn admin-only hidden" data-tab="usuarios">Usuarios <span class="badge-count hidden" id="badgeUsuariosPend">0</span></button>
+    <button class="tab-btn admin-only hidden" data-tab="estadisticas">Estadísticas</button>
     <button class="tab-btn admin-only hidden" data-tab="configuracion">Configuración</button>
   </div>
 
@@ -336,6 +337,7 @@ tr:last-child td{border-bottom:none;}
       <div class="kpi-row">
         <div class="kpi-card"><div class="num" id="kpiResPend">0</div><div class="label">Pendientes</div></div>
         <div class="kpi-card"><div class="num" id="kpiResAprob">0</div><div class="label">Aprobadas</div></div>
+        <div class="kpi-card" style="cursor:pointer;" id="kpiCardVencidas"><div class="num" id="kpiResVencidas">0</div><div class="label">Devoluciones vencidas</div></div>
         <div class="kpi-card"><div class="num" id="kpiResDevuelto">0</div><div class="label">Material devuelto</div></div>
         <div class="kpi-card"><div class="num" id="kpiResTotal">0</div><div class="label">Total reservas</div></div>
       </div>
@@ -381,6 +383,21 @@ tr:last-child td{border-bottom:none;}
           <thead><tr><th style="width:32px;"><input type="checkbox" id="usrSelectAll"></th><th>Nombre</th><th>Email</th><th>Teléfono</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
           <tbody></tbody>
         </table>
+      </div>
+    </section>
+
+    <!-- ---------- ESTADÍSTICAS (admin) ---------- -->
+    <section id="tab-estadisticas" class="hidden">
+      <div class="section-head"><div><h2>Estadísticas</h2><div class="section-sub">Actividad del club</div></div></div>
+      <div class="report-grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr));">
+        <div class="report-card">
+          <h4>Artículos más pedidos</h4>
+          <div id="statsArticulos"></div>
+        </div>
+        <div class="report-card">
+          <h4>Socios más activos</h4>
+          <div id="statsSocios"></div>
+        </div>
       </div>
     </section>
 
@@ -471,6 +488,10 @@ tr:last-child td{border-bottom:none;}
         </div>
         <div class="field"><label>Ubicación</label><input type="text" id="artUbicacion"></div>
         <div class="field"><label>Descripción</label><textarea id="artDescripcion" rows="3"></textarea></div>
+      </div>
+      <div id="artHistorial" class="hidden" style="margin-top:16px;border-top:1px solid var(--stone-200);padding-top:14px;">
+        <div style="font-size:12.5px;font-weight:700;color:var(--ink-600);text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px;">Historial reciente</div>
+        <div id="artHistorialLista" class="helper"></div>
       </div>
     </div>
     <div class="modal-foot">
@@ -583,16 +604,19 @@ const CLUB_EMAIL = "clubchotacabrassanjavier@gmail.com"; // correo del club que 
 if(EMAILJS_PUBLIC_KEY && window.emailjs){ window.emailjs.init(EMAILJS_PUBLIC_KEY); }
 
 function enviarAvisoEmail(asunto, mensaje){
-  if(!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !window.emailjs) return;
+  enviarAvisoEmailA(CLUB_EMAIL, asunto, mensaje);
+}
+function enviarAvisoEmailA(destino, asunto, mensaje){
+  if(!EMAILJS_PUBLIC_KEY || !EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !window.emailjs || !destino) return;
   window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-    to_email: CLUB_EMAIL, subject: asunto, message: mensaje
+    to_email: destino, subject: asunto, message: mensaje
   }).catch(()=>{ /* si falla el aviso, no interrumpimos el flujo normal de la app */ });
 }
 
 /* ---------------- Estado global ---------------- */
 const State = {
   user:null, userDoc:null, isAdmin:false,
-  articulos:[], reservas:[], usuarios:[], categorias:[], estados:[],
+  articulos:[], reservas:[], usuarios:[], categorias:[], estados:[], gestiones:[],
   editingArticuloId:null, reservandoArticuloId:null, devolucionReservaId:null
 };
 
@@ -765,6 +789,11 @@ function setupListeners(){
     State.estados = snap.docs.map(d=>({id:d.id,...d.data()}));
     renderEstadosConfig(); fillFiltros();
   }));
+  if(State.isAdmin){
+    unsubs.push(onSnapshot(collection(db,'gestiones'), snap=>{
+      State.gestiones = snap.docs.map(d=>({id:d.id,...d.data()}));
+    }));
+  }
 }
 
 function updateBadges(){
@@ -780,11 +809,38 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
   btn.onclick=()=>{
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
-    ['inventario','reservas','usuarios','configuracion'].forEach(t=>{
+    ['inventario','reservas','usuarios','estadisticas','configuracion'].forEach(t=>{
       $('tab-'+t).classList.toggle('hidden', t!==btn.dataset.tab);
     });
+    if(btn.dataset.tab==='estadisticas') renderEstadisticas();
   };
 });
+
+function barraStats(items){
+  if(items.length===0) return '<div class="helper">Sin datos todavía.</div>';
+  const max = Math.max(...items.map(i=>i.count));
+  return items.map(i=>`
+    <div style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px;">
+        <span>${i.nombre}</span><span class="mono">${i.count}</span>
+      </div>
+      <div style="background:var(--stone-100);border-radius:6px;height:8px;overflow:hidden;">
+        <div style="background:var(--lake-600);height:100%;width:${Math.max(4,(i.count/max)*100)}%;"></div>
+      </div>
+    </div>`).join('');
+}
+function renderEstadisticas(){
+  const porArticulo = {};
+  const porSocio = {};
+  State.reservas.forEach(r=>{
+    if(r.articuloNombre) porArticulo[r.articuloNombre] = (porArticulo[r.articuloNombre]||0)+1;
+    if(r.usuarioNombre) porSocio[r.usuarioNombre] = (porSocio[r.usuarioNombre]||0)+1;
+  });
+  const topArticulos = Object.entries(porArticulo).map(([nombre,count])=>({nombre,count})).sort((a,b)=>b.count-a.count).slice(0,10);
+  const topSocios = Object.entries(porSocio).map(([nombre,count])=>({nombre,count})).sort((a,b)=>b.count-a.count).slice(0,10);
+  $('statsArticulos').innerHTML = barraStats(topArticulos);
+  $('statsSocios').innerHTML = barraStats(topSocios);
+}
 
 /* ---------------- Filtros ---------------- */
 function fillFiltros(){
@@ -824,6 +880,12 @@ $('kpiCardTotal').onclick=()=>{ $('filtroEstadoArt').value=''; $('filtroCategori
 $('kpiCardDisponibles').onclick=()=>setEstadoFiltroByKeyword('disponible');
 $('kpiCardPrestados').onclick=()=>setEstadoFiltroByKeyword('prestado');
 $('kpiCardMantenimiento').onclick=()=>setEstadoFiltroByKeyword('mantenimiento');
+$('kpiCardVencidas').onclick=()=>{
+  $('filtroEstadoReserva').value='aprobada';
+  if($('filtroSocioReserva')) $('filtroSocioReserva').value='';
+  renderReservas();
+  document.querySelector('[data-tab="reservas"]')?.click();
+};
 
 /* ---------------- Render: Inventario ---------------- */
 function renderKpisInventario(){
@@ -898,6 +960,16 @@ function openArticuloModal(id){
       const disponible = articuloEstaDisponible(a);
       $('btnReservarDesdeDetalle').disabled = !disponible;
       $('btnReservarDesdeDetalle').textContent = disponible ? 'Reservar' : 'No disponible ahora mismo';
+      if(State.isAdmin){
+        const hist = State.gestiones.filter(g=>g.articuloId===id)
+          .sort((x,y)=>(y.fecha?.seconds||0)-(x.fecha?.seconds||0)).slice(0,6);
+        $('artHistorial').classList.toggle('hidden', hist.length===0);
+        $('artHistorialLista').innerHTML = hist.map(g=>
+          `<div style="margin-bottom:6px;">${fmtDate(g.fecha)} — ${g.descripcion||g.tipo} ${g.usuarioNombre?`(${g.usuarioNombre})`:''}</div>`
+        ).join('');
+      }else{
+        $('artHistorial').classList.add('hidden');
+      }
     }
   }
   $('modalArticulo').classList.remove('hidden');
@@ -921,6 +993,7 @@ $('btnSaveArticulo').onclick = async ()=>{
   const nombre=$('artNombre').value.trim();
   if(!nombre){ showToast('El nombre es obligatorio'); return; }
   $('btnSaveArticulo').disabled=true; $('btnSaveArticulo').textContent='Guardando…';
+  const prevArt = State.editingArticuloId ? State.articulos.find(a=>a.id===State.editingArticuloId) : null;
   try{
     let imagenUrl = artImagenUrlTmp;
     if(artImagenPendingFile){ imagenUrl = await uploadToCloudinary(artImagenPendingFile); }
@@ -933,7 +1006,13 @@ $('btnSaveArticulo').onclick = async ()=>{
     };
     if(State.editingArticuloId){
       await updateDoc(doc(db,'articulos',State.editingArticuloId), data);
-      await logGestion('editar_articulo', State.editingArticuloId, nombre, '', 'Artículo actualizado');
+      const eraMantenimiento = prevArt && (prevArt.estado||'').toLowerCase().includes('mantenimiento');
+      const yaDisponible = (data.estado||'').toLowerCase()==='disponible';
+      if(eraMantenimiento && yaDisponible){
+        await logGestion('reparado_articulo', State.editingArticuloId, nombre, '', 'Marcado como reparado y disponible de nuevo');
+      }else{
+        await logGestion('editar_articulo', State.editingArticuloId, nombre, '', 'Artículo actualizado');
+      }
     }else{
       data.creado=serverTimestamp();
       const ref=await addDoc(collection(db,'articulos'), data);
@@ -1013,10 +1092,14 @@ $('btnEnviarReserva').onclick = async ()=>{
 };
 
 /* ---------------- Render: Reservas ---------------- */
+function reservaVencida(r){
+  return r.estado==='aprobada' && r.fechaFin && r.fechaFin < todayStr();
+}
 function renderKpisReservas(){
   const propias = State.isAdmin ? State.reservas : State.reservas.filter(r=>r.usuarioId===State.user.uid);
   $('kpiResPend').textContent=propias.filter(r=>r.estado==='pendiente').length;
   $('kpiResAprob').textContent=propias.filter(r=>r.estado==='aprobada').length;
+  $('kpiResVencidas').textContent=propias.filter(reservaVencida).length;
   $('kpiResDevuelto').textContent=propias.filter(r=>r.estado==='completada').length;
   $('kpiResTotal').textContent=propias.length;
 }
@@ -1031,7 +1114,9 @@ function renderReservas(){
   const tbody=document.querySelector('#tablaReservas tbody'); tbody.innerHTML='';
   $('reservasEmpty').classList.toggle('hidden', list.length>0);
   list.forEach(r=>{
-    const pillClass=ESTADO_PILL[r.estado]||'pill-muted';
+    const vencida = reservaVencida(r);
+    const pillClass= vencida ? 'pill-danger' : (ESTADO_PILL[r.estado]||'pill-muted');
+    const pillTexto = vencida ? 'vencida' : r.estado;
     const tr=document.createElement('tr');
     let acciones='';
     if(State.isAdmin){
@@ -1066,7 +1151,7 @@ function renderReservas(){
       <td>${r.usuarioNombre||''}</td>
       <td class="mono">${fmtDate(r.fechaInicio)} → ${fmtDate(r.fechaFin)}</td>
       <td class="mono">${r.cantidad||1}</td>
-      <td><span class="pill ${pillClass}">${r.estado}</span></td>
+      <td><span class="pill ${pillClass}">${pillTexto}</span></td>
       <td class="actions-cell ${State.isAdmin?'':''}">${acciones}</td>`;
     tbody.appendChild(tr);
   });
@@ -1138,12 +1223,22 @@ async function aprobarReserva(id){
   }
   await updateDoc(doc(db,'reservas',id), {estado:'aprobada'});
   await logGestion('aprobar_reserva', r.articuloId, r.articuloNombre, r.cantidad, `Reserva aprobada para ${r.usuarioNombre}`);
+  enviarAvisoEmailA(r.email,
+    'Tu reserva ha sido aprobada — Club Chotacabras',
+    `Hola ${r.usuarioNombre}, tu solicitud de "${r.articuloNombre}" del ${r.fechaInicio} al ${r.fechaFin} ha sido APROBADA. Puedes pasar a recogerlo por el club.`
+  );
   showToast('Reserva aprobada');
 }
 async function rechazarReserva(id){
   const r=State.reservas.find(x=>x.id===id);
   await updateDoc(doc(db,'reservas',id), {estado:'rechazada'});
   await logGestion('rechazar_reserva', r?.articuloId||'', r?.articuloNombre||'', r?.cantidad||0, `Reserva rechazada para ${r?.usuarioNombre||''}`);
+  if(r){
+    enviarAvisoEmailA(r.email,
+      'Tu solicitud de reserva ha sido rechazada — Club Chotacabras',
+      `Hola ${r.usuarioNombre}, tu solicitud de "${r.articuloNombre}" del ${r.fechaInicio} al ${r.fechaFin} no ha podido ser aprobada. Si tienes dudas, contacta con el club.`
+    );
+  }
   showToast('Reserva rechazada');
 }
 async function cancelarReserva(id){
@@ -1165,16 +1260,19 @@ $('btnGuardarDevolucion').onclick = async ()=>{
     devolucion:{ fecha:$('devFecha').value, estadoMaterial:$('devEstado').value, observaciones:$('devObservaciones').value.trim() }
   });
   if(art){
-    const necesitaMantenimiento = ['revision','reparacion_menor','danado'].includes($('devEstado').value);
-    if(necesitaMantenimiento){
+    const necesitaMantenimientoLog = ['revision','reparacion_menor','danado'].includes($('devEstado').value);
+    if(necesitaMantenimientoLog){
       // No se devuelve al stock disponible: la unidad queda retenida hasta que un admin la revise y la reactive a mano.
       await updateDoc(doc(db,'articulos',art.id), { estado: 'Mantenimiento' });
     }else{
       const nuevaDisp=Math.min((art.cantidadTotal||0), (art.cantidadDisponible||0)+(r?.cantidad||1));
       await updateDoc(doc(db,'articulos',art.id), { cantidadDisponible:nuevaDisp, estado: 'Disponible' });
     }
+    await logGestion('completar_reserva', r?.articuloId||'', r?.articuloNombre||'', r?.cantidad||0,
+      necesitaMantenimientoLog ? `Devolución registrada — necesita mantenimiento (${$('devEstado').value})` : 'Devolución registrada — material en buen estado');
+  }else{
+    await logGestion('completar_reserva', r?.articuloId||'', r?.articuloNombre||'', r?.cantidad||0, 'Devolución registrada');
   }
-  await logGestion('completar_reserva', r?.articuloId||'', r?.articuloNombre||'', r?.cantidad||0, 'Devolución registrada');
   closeModals(); showToast('Devolución registrada');
 };
 
